@@ -1,1 +1,3 @@
-# BachelorarbeitThis project is for my bachelor thesis
+# Bachelorarbeit
+
+This project is for my bachelor thesis.
