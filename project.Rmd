@@ -29,6 +29,8 @@ allbus2006 <- allbus2006 |>
     split_capi = factor(split_capi,
                         levels = c(0, 1),
                         labels = c("CASI", "CAPI")),
+    alter = case_when(v27 == 999 ~ NA,
+                      TRUE ~ v26),
     immi_anpassen = case_when(v43 %in% c(1:7) ~ v43,
                               TRUE ~ NA),
     immi_heim = case_when(v44 %in% c(1:7) ~ v44,
@@ -37,7 +39,7 @@ allbus2006 <- allbus2006 |>
                               TRUE ~ NA),
     immi_heirat = case_when(v46 %in% c(1:7) ~ v46,
                               TRUE ~ NA),
-    immi = mean(c(immi_anpassen, immi_heim, immi_unpolit, immi_heirat), na.rm = TRUE),
+    immi = 1/6 * (immi_anpassen + immi_heim + immi_unpolit + immi_heirat),
     split_selbst = case_when(v47 %in% c(1:4) ~ v47,
                              TRUE ~ NA),
     split_selbst = factor(split_selbst,
@@ -61,6 +63,12 @@ allbus2006 <- allbus2006 |>
     interviewer_experience = v706
     ) 
 ```
+
+```{r}
+ggplot(data = allbus2006, mapping = aes(x = split_capi, y = immi)) +
+  geom_boxplot() 
+```
+
 
 ```{r save csv}
 write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
