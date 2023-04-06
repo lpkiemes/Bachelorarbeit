@@ -1,0 +1,24 @@
+---
+title: "Bachelorarbeit"
+author: "Laura Kiemes, 12250912"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!require("pacman")) install.packages("pacman"); library(pacman)
+pacman::p_load(haven, readr)
+
+here::i_am("project.Rmd")
+```
+
+# Data Cleaning
+
+```{r cleaning}
+gles <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
+
+write_csv(gles, here::here("data", "gles2006.csv")) # save as csv
+```
+
