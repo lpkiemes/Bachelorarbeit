@@ -16,26 +16,21 @@ pacman::p_load(haven, readr, tidyverse)
 here::i_am("project.Rmd")
 ```
 
-# Data import
-
-```{r}
-allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
-```
-
 
 # Data Cleaning
 
 ```{r cleaning ZA4500_patch_v2-0-0.do}
-# as line 25-30 in data/ZA4500_patch_v2-0-0.do
+allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    v736 = ifelse(v736 %in% c(8:10), NA, v736),
-    v738 = ifelse(v738 %in% c(8:10), NA, v738),
-    interviewer_male = ifelse(v702 == 2, 0, v702),
+    v736 = ifelse(v736 %in% c(8:10), NA, v736), # as line 25-30 in data/ZA4500_patch_v2-0-0.do
+    v738 = ifelse(v738 %in% c(8:10), NA, v738), # as line 25-30 in data/ZA4500_patch_v2-0-0.do
+    interviewer_male = case_when(v702 == 2 ~ 0, 
+                                 TRUE ~ v702),
     interviewer_age = v703,
-    interviewer_agediff = ifelse(v703 == 999, NA, v703),
-    interviewer_agediff = abs(v703 - v27),
+    interviewer_agediff = case_when(v703 == 999 ~ NA, 
+                                    TRUE ~ abs(v703 - v27)),
     interviewer_edu = factor(v705, 
                              levels = c(1:4), 
                              labels = c("Volks-/Hauptschulabschluss",
@@ -44,7 +39,7 @@ allbus2006 <- allbus2006 |>
                                         "(Fach-)Hochschulabschluss"),
                              ordered = TRUE),
     interviewer_experience = v706
-    )
+    ) 
 ```
 
 ```{r save csv}
