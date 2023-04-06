@@ -24,8 +24,6 @@ allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    v736 = ifelse(v736 %in% c(8:10), NA, v736), # as line 25-30 in data/ZA4500_patch_v2-0-0.do
-    v738 = ifelse(v738 %in% c(8:10), NA, v738), # as line 25-30 in data/ZA4500_patch_v2-0-0.do
     interviewer_male = case_when(v702 == 2 ~ 0, 
                                  TRUE ~ v702),
     interviewer_age = v703,
