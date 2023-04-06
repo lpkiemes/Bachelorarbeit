@@ -2,7 +2,12 @@
 title: "Bachelorarbeit"
 author: "Laura Kiemes, 12250912"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: no
 ---
 
 # Setup
@@ -11,6 +16,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 if (!require("pacman")) install.packages("pacman"); library(pacman)
+pacman::p_load(devtools)
+if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
 pacman::p_load(haven, readr, tidyverse)
 
 here::i_am("project.Rmd")
@@ -24,22 +31,26 @@ allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    split_capi = case_when(v3 == 2 ~ 0,
-                           TRUE ~ v3),
-    split_capi = factor(split_capi,
+    split = case_when(v3 == 2 ~ 0,
+                      TRUE ~ v3),
+    split = factor(split,
                         levels = c(0, 1),
                         labels = c("CASI", "CAPI")),
-    alter = case_when(v27 == 999 ~ NA,
+    age = case_when(v27 == 999 ~ NA,
                       TRUE ~ v26),
-    immi_anpassen = case_when(v43 %in% c(1:7) ~ v43,
+    immigration_anpassen = case_when(v43 %in% c(1:7) ~ v43,
                               TRUE ~ NA),
-    immi_heim = case_when(v44 %in% c(1:7) ~ v44,
+    immigration_heim = case_when(v44 %in% c(1:7) ~ v44,
                               TRUE ~ NA),
-    immi_unpolit = case_when(v45 %in% c(1:7) ~ v45,
+    immigration_unpolit = case_when(v45 %in% c(1:7) ~ v45,
                               TRUE ~ NA),
-    immi_heirat = case_when(v46 %in% c(1:7) ~ v46,
+    immigration_heirat = case_when(v46 %in% c(1:7) ~ v46,
                               TRUE ~ NA),
-    immi = 1/6 * (immi_anpassen + immi_heim + immi_unpolit + immi_heirat),
+    immigration = idx_mean(immigration_anpassen, 
+                           immigration_heim, 
+                           immigration_unpolit, 
+                           immigration_heirat),
+    immigration_log = log(immigration),
     split_selbst = case_when(v47 %in% c(1:4) ~ v47,
                              TRUE ~ NA),
     split_selbst = factor(split_selbst,
@@ -53,24 +64,87 @@ allbus2006 <- allbus2006 |>
     interviewer_age = v703,
     interviewer_agediff = case_when(v703 == 999 ~ NA, 
                                     TRUE ~ abs(v703 - v27)),
-    interviewer_edu = factor(v705, 
+    interviewer_edu = factor(v705,
                              levels = c(1:4), 
                              labels = c("Volks-/Hauptschulabschluss",
                                         "Mittlere Reife",
                                         "(Fach-)Hochschulreife",
                                         "(Fach-)Hochschulabschluss"),
-                             ordered = TRUE),
-    interviewer_experience = v706
+                             ordered = TRUE)
     ) 
 ```
-
-```{r}
-ggplot(data = allbus2006, mapping = aes(x = split_capi, y = immi)) +
-  geom_boxplot() 
-```
-
 
 ```{r save csv}
 write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 ```
+
+
+
+# Results
+
+## Univariate description
+
+## Central correlation
+
+```{r}
+ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
+  geom_boxplot() 
+```
+
+# Linear Regression
+
+## Voraussetzungen
+
+### Unabhängigkeit
+
+```{r}
+cor(allbus2006 |> 
+      select(
+        interviewer_age,
+        interviewer_agediff,
+        age,
+        immigration,
+        immigration_log
+      )) # all independant variables
+```
+
+### Normalverteilung
+
+```{r}
+hist(allbus2006$immigration_log)
+hist(allbus2006$immigration)
+```
+
+## Einfache lineare Regression
+
+```{r}
+split_immigration.lm <- lm(immigration ~ split_selbst, data = allbus2006)
+
+summary(split_immigration.lm)
+```
+
+## Multiple lineare Regression
+
+```{r}
+split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age + interviewer_male + interviewer_agediff, data = allbus2006)
+
+summary(split_immigration_multiple.lm)
+```
+
+
+## Homoskedaszität
+
+```{r}
+par(mfrow=c(2,2))
+plot(split_immigration_multiple.lm)
+par(mfrow=c(1,1))
+```
+
+
+
+
+
+
+
+
 
