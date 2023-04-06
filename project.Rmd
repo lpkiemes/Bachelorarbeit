@@ -5,7 +5,9 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+# Setup
+
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 
 if (!require("pacman")) install.packages("pacman"); library(pacman)
@@ -14,24 +16,38 @@ pacman::p_load(haven, readr, tidyverse)
 here::i_am("project.Rmd")
 ```
 
-# Data Cleaning
+# Data import
 
-```{r cleaning}
+```{r}
 allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
-
-allbus2006 |> 
-  mutate(
-    v736 = ifelse(v736 %in% c(8:10), NA, v736))
 ```
 
-recode v736 v738 (8/10 = .a)
-capture label define Gewichte .a "KEINE ANGABE"
-label values v736 v738 Gewichte
-foreach var in v736 v738{
-note `var' : TS CASES LACKING INFORMATION ABOUT HOUSEHOLD SIZE WERE SET TO MISSING
-}
+
+# Data Cleaning
+
+```{r cleaning ZA4500_patch_v2-0-0.do}
+# as line 25-30 in data/ZA4500_patch_v2-0-0.do
+
+allbus2006 <- allbus2006 |> 
+  mutate(
+    v736 = ifelse(v736 %in% c(8:10), NA, v736),
+    v738 = ifelse(v738 %in% c(8:10), NA, v738),
+    interviewer_male = ifelse(v702 == 2, 0, v702),
+    interviewer_age = v703,
+    interviewer_agediff = ifelse(v703 == 999, NA, v703),
+    interviewer_agediff = abs(v703 - v27),
+    interviewer_edu = factor(v705, 
+                             levels = c(1:4), 
+                             labels = c("Volks-/Hauptschulabschluss",
+                                        "Mittlere Reife",
+                                        "(Fach-)Hochschulreife",
+                                        "(Fach-)Hochschulabschluss"),
+                             ordered = TRUE),
+    interviewer_experience = v706
+    )
+```
 
 ```{r save csv}
-write_csv(gles, here::here("data", "allbus2006.csv")) # save as csv
+write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 ```
 
