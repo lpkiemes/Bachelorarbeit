@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 if (!require("pacman")) install.packages("pacman"); library(pacman)
-pacman::p_load(haven, readr)
+pacman::p_load(haven, readr, tidyverse)
 
 here::i_am("project.Rmd")
 ```
@@ -17,8 +17,21 @@ here::i_am("project.Rmd")
 # Data Cleaning
 
 ```{r cleaning}
-gles <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
+allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
 
-write_csv(gles, here::here("data", "gles2006.csv")) # save as csv
+allbus2006 |> 
+  mutate(
+    v736 = ifelse(v736 %in% c(8:10), NA, v736))
+```
+
+recode v736 v738 (8/10 = .a)
+capture label define Gewichte .a "KEINE ANGABE"
+label values v736 v738 Gewichte
+foreach var in v736 v738{
+note `var' : TS CASES LACKING INFORMATION ABOUT HOUSEHOLD SIZE WERE SET TO MISSING
+}
+
+```{r save csv}
+write_csv(gles, here::here("data", "allbus2006.csv")) # save as csv
 ```
 
