@@ -54,11 +54,10 @@ allbus2006 <- allbus2006 |>
                            immigration_unpolit, 
                            immigration_heirat),
     immigration_log = log(immigration),
-    split_selbst = case_when(v47 %in% c(1:4) ~ v47,
-                             TRUE ~ NA),
-    split_selbst = factor(split_selbst,
-                          levels = c(1:4),
-                          labels = c("ja, ohne Hilfe",
+    split_selbst = factor(v47,
+                          levels = c(0:4),
+                          labels = c("CAPI", 
+                                     "ja, ohne Hilfe",
                                      "ja, Hilfe vorher",
                                      "ja, Hilfe dabei",
                                      "nein")),
@@ -85,9 +84,9 @@ write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 
 # Results
 
-## Univariate description
+## Univariate Deskription
 
-## Central correlation
+## Zentraler Zusammenhang
 
 ```{r}
 ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
