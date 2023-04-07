@@ -27,7 +27,7 @@ pacman::p_load(haven, readr, tidyverse, gtsummary)
 here::i_am("project.Rmd")
 ```
 
-# Data Cleaning
+# Datenbereinigung
 
 ```{r cleaning ZA4500_patch_v2-0-0.do}
 allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
@@ -38,7 +38,8 @@ allbus2006 <- allbus2006 |>
                       TRUE ~ v3),
     split = factor(split,
                         levels = c(0, 1),
-                        labels = c("CASI", "CAPI")),
+                        labels = c("Computer Assisted Self-Interviewing",
+                                   "Computer Assisted Personal Interviewing")),
     age = case_when(v27 == 999 ~ NA,
                       TRUE ~ v26),
     immigration_anpassen = case_when(v43 %in% c(1:7) ~ v43,
@@ -56,13 +57,21 @@ allbus2006 <- allbus2006 |>
     immigration_log = log(immigration),
     split_selbst = factor(v47,
                           levels = c(0:4),
-                          labels = c("CAPI", 
+                          labels = c("Computer Assisted Personal Interviewing", 
                                      "ja, ohne Hilfe",
                                      "ja, Hilfe vorher",
                                      "ja, Hilfe dabei",
                                      "nein")),
-    interviewer_male = case_when(v702 == 2 ~ 0, 
+    sex = factor(v174,
+                 levels = c(1, 2),
+                 labels = c("Männlich", "Weiblich")),
+    edu = case_when(v175 %in% c(1:5) ~ v175,
+                    TRUE ~ NA),
+    interviewer_sex = case_when(v702 == 2 ~ 0, 
                                  TRUE ~ v702),
+    interviewer_sex = factor(interviewer_sex,
+                             levels = c(0, 1),
+                             labels = c("Männlich", "Weiblich")),
     interviewer_age = v703,
     interviewer_agediff = case_when(v703 == 999 ~ NA, 
                                     TRUE ~ abs(v703 - v27)),
@@ -89,6 +98,9 @@ write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 ## Zentraler Zusammenhang
 
 ```{r}
+ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
+  geom_boxplot() 
+
 ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
   geom_boxplot() 
 ```
@@ -101,11 +113,14 @@ ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
 cor(allbus2006 |> 
       select(
         interviewer_age,
-        interviewer_agediff,
-        age,
-        immigration,
-        immigration_log
+        interviewer_agediff
       )) # all independant variables
+
+cor(allbus2006 |> 
+      select(
+        age, 
+        immigration
+        ))
 ```
 
 ## Normalverteilung
@@ -126,7 +141,7 @@ summary(split_immigration.lm)
 ## Multiple lineare Regression
 
 ```{r}
-split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age + interviewer_male + interviewer_agediff, data = allbus2006)
+split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age + edu + sex +interviewer_sex + interviewer_agediff, data = allbus2006)
 
 summary(split_immigration_multiple.lm)
 ```
