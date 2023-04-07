@@ -22,9 +22,11 @@ knitr::opts_chunk$set(echo = TRUE)
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 pacman::p_load(devtools)
 if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
-pacman::p_load(haven, readr, tidyverse, gtsummary)
+pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci)
 
 here::i_am("project.Rmd")
+
+theme_set(theme_light())
 ```
 
 # Datenbereinigung
@@ -42,6 +44,7 @@ allbus2006 <- allbus2006 |>
                                    "Computer Assisted Personal Interviewing")),
     age = case_when(v27 == 999 ~ NA,
                       TRUE ~ v26),
+    age_cen = age - mean(age, na.rm = TRUE),
     immigration_anpassen = case_when(v43 %in% c(1:7) ~ v43,
                               TRUE ~ NA),
     immigration_heim = case_when(v44 %in% c(1:7) ~ v44,
@@ -98,11 +101,24 @@ write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 ## Zentraler Zusammenhang
 
 ```{r}
+allbus2006 |> 
+  group_by(split_selbst) |> 
+  summarize(mean(immigration, na.rm = TRUE))
+```
+
+
+```{r}
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_boxplot() 
 
+ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
+  geom_violin() 
+
 ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
-  geom_boxplot() 
+  geom_boxplot()
+
+ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
+  geom_violin() 
 ```
 
 # Linear Regression
@@ -141,7 +157,7 @@ summary(split_immigration.lm)
 ## Multiple lineare Regression
 
 ```{r}
-split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age + edu + sex +interviewer_sex + interviewer_agediff, data = allbus2006)
+split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age_cen + edu + sex +interviewer_sex + interviewer_agediff, data = allbus2006)
 
 summary(split_immigration_multiple.lm)
 ```
