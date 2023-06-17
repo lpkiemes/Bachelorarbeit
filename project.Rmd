@@ -5,13 +5,13 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     toc: yes
-    toc_depth: 2
+    toc_depth: 4
     number_sections: yes
     toc_float:
-      collapsed: no
+      collapsed: yes
   pdf_document:
     toc: yes
-    toc_depth: '2'
+    toc_depth: '3'
 ---
 
 # Setup
@@ -22,29 +22,54 @@ knitr::opts_chunk$set(echo = TRUE)
 if (!require("pacman")) install.packages("pacman"); library(pacman)
 pacman::p_load(devtools)
 if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
-pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci)
+pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, summarytools)
 
 here::i_am("project.Rmd")
 
 theme_set(theme_light())
+
+set.seed(12250912)
 ```
 
 # Datenbereinigung
 
-```{r cleaning ZA4500_patch_v2-0-0.do}
+## Datenimport
+
+```{r}
 allbus2006 <- read_dta(here::here("data", "ZA4500_v2-0-0.dta")) # gesis data
 
+```
+
+## Oversampling aufheben
+
+```{r re-oversampling}
+allbus2006 |> 
+  summarise(n = n())
+
+allbus2006 |> 
+  group_by(v4) |> 
+  summarise(n = n())
+
+west <- allbus2006 |> filter(v4 == 1)
+east <- allbus2006 |> filter(v4 == 2)
+
+1122 * 0.562993624 # Anzahl Ost-Befragte im Zielsample
+weighted_east <- east[sample(nrow(east), size = 1122 * 0.562993624), ] # Zielsample Ost
+
+allbus2006 <- rbind(west, weighted_east) # Zielsample gesamt
+
+allbus2006 |> 
+  group_by(v4) |> 
+  summarise(n = n())
+```
+
+## Variablen
+
+### Immigration
+
+```{r}
 allbus2006 <- allbus2006 |> 
   mutate(
-    split = case_when(v3 == 2 ~ 0,
-                      TRUE ~ v3),
-    split = factor(split,
-                        levels = c(0, 1),
-                        labels = c("Computer Assisted Self-Interviewing",
-                                   "Computer Assisted Personal Interviewing")),
-    age = case_when(v27 == 999 ~ NA,
-                      TRUE ~ v26),
-    age_cen = age - mean(age, na.rm = TRUE),
     immigration_anpassen = case_when(v43 %in% c(1:7) ~ v43,
                               TRUE ~ NA),
     immigration_heim = case_when(v44 %in% c(1:7) ~ v44,
@@ -57,36 +82,553 @@ allbus2006 <- allbus2006 |>
                            immigration_heim, 
                            immigration_unpolit, 
                            immigration_heirat),
-    immigration_log = log(immigration),
-    split_selbst = factor(v47,
+    immigration_log = log(immigration)
+  )
+
+summary(allbus2006$immigration)
+```
+
+```{r code check immigration}
+# Skala: 
+#0 Keine deutsche Staatsbürgerschaft (Code 2-24 in F010_1)
+#1 Stimme überhaupt nicht zu
+#2 ..
+#3 ..
+#4 ..
+#5 ..
+#6 ..
+#7 Stimme voll und ganz zu
+#99 Keine Angabe
+
+# Aussage: Die in Deutschland lebenden Ausländer sollten ihren Lebensstil ein bisschen besser an den der Deutschen anpassen.
+table(allbus2006$v43, allbus2006$immigration_anpassen)
+# Aussage: Wenn Arbeitsplätze knapp werden, sollte man die in Deutschland lebenden Ausländer wieder in ihre Heimat zurückschicken.
+table(allbus2006$v44, allbus2006$immigration_heim)
+# Aussage: Man sollte den in Deutschland lebenden Ausländern jede politische Betätigung in Deutschland untersagen.
+table(allbus2006$v45, allbus2006$immigration_unpolit)
+# Aussage: Die in Deutschland lebenden Ausländer sollten sich ihre Ehepartner unter ihren eigenen Landsleuten auswählen.
+table(allbus2006$v46, allbus2006$immigration_heirat)
+```
+
+```{r}
+allbus2006 |> 
+  select(immigration_anpassen, 
+         immigration_heim, 
+         immigration_unpolit, 
+         immigration_heirat,
+         immigration) |> 
+  head()
+```
+
+
+
+
+### Soziale Erwünschtheit
+
+#### Split & Split-Erfolg
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    split = case_when(v3 == 2 ~ 0,
+                      TRUE ~ v3), # split binaer
+    split = factor(split,
+                        levels = c(0, 1),
+                        labels = c("Computer Assisted Self-Interviewing",
+                                   "Computer Assisted Personal Interviewing")),
+    split_erfolg = factor(v47,
                           levels = c(0:4),
                           labels = c("Computer Assisted Personal Interviewing", 
                                      "ja, ohne Hilfe",
                                      "ja, Hilfe vorher",
                                      "ja, Hilfe dabei",
-                                     "nein")),
-    sex = factor(v174,
-                 levels = c(1, 2),
-                 labels = c("Männlich", "Weiblich")),
-    edu = case_when(v175 %in% c(1:5) ~ v175,
-                    TRUE ~ NA),
+                                     "nein")), # split casi erfolg
+  )
+
+summary(allbus2006$split)
+summary(allbus2006$split_erfolg)
+```
+
+```{r}
+table(allbus2006$v3, allbus2006$split)
+table(allbus2006$v47, allbus2006$split_erfolg)
+```
+
+
+#### Tendenz zu sozialer Erwünschtheit
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    sdtendency_wahl = case_when(v54 == 2 ~ 0,
+                     v54 == 1 ~ v54,
+                     TRUE ~ NA),
+    sdtendency_niebeleidigt = v55 - 1,
+    sdtendency_niebeleidigt = case_when(sdtendency_niebeleidigt %in% c(0, 1) ~ sdtendency_niebeleidigt,
+                                        TRUE ~ NA),
+    sdtendency_ohr = case_when(v56 == 2 ~ 0,
+                               v56 == 1 ~ v56,
+                               TRUE ~ NA),
+    sdtendency_niekrank = v57 - 1,
+    sdtendency_niekrank = case_when(sdtendency_niekrank %in% c(0, 1) ~ sdtendency_niekrank,
+                                    TRUE ~ NA),
+    sdtendency_nieausnutzen = v58 - 1,
+    sdtendency_nieausnutzen = case_when(sdtendency_nieausnutzen %in% c(0, 1) ~ sdtendency_nieausnutzen,
+                                        TRUE ~ NA),
+    sdtendency_zugeben = case_when(v59 == 2 ~ 0,
+                                   v59 == 1 ~ v59,
+                                   TRUE ~ NA),
+    sdtendency_selber = case_when(v60 == 2 ~ 0,
+                                  v60 == 1 ~ v60,
+                                  TRUE ~ NA),
+    sdtendency_hoeflich = case_when(v61 == 2 ~ 0,
+                                    v61 == 1 ~ v61,
+                                    TRUE ~ NA),
+    sdtendency_nieaerger = v62 - 1,
+    sdtendency_nieaerger = case_when(sdtendency_nieaerger %in% c(0, 1) ~ sdtendency_nieaerger,
+                                     TRUE ~ NA),
+    sdtendency_nieverletzt = case_when(v63 == 2 ~ 0,
+                                       v63 == 1 ~ v63,
+                                       TRUE ~ NA),
+    sdtendency = idx_mean(
+      sdtendency_wahl, 
+      sdtendency_niebeleidigt, 
+      sdtendency_ohr, 
+      sdtendency_niekrank, 
+      sdtendency_nieausnutzen, 
+      sdtendency_zugeben, 
+      sdtendency_selber, 
+      sdtendency_hoeflich, 
+      sdtendency_nieaerger, 
+      sdtendency_nieverletzt
+      )
+  )
+
+summary(allbus2006$sdtendency)
+```
+
+```{r code check sdtendency}
+# Skala: 
+#1 Richtig
+#2 Falsch
+#9 Keine Angabe
+
+# Aussage: Vor einer Wahl informiere ich mich gründlich über die Eignung der verschiedenen Kandidaten.
+table(allbus2006$v54, allbus2006$sdtendency_wahl)
+# Aussage: Manchmal bin ich beleidigt, wenn es nicht nach meinem Willen geht.
+table(allbus2006$v55, allbus2006$sdtendency_niebeleidigt)
+# Aussage: Ich bin stets ein guter Zuhörer, gleichgültig, wer mein Gesprächspartner ist.
+table(allbus2006$v56, allbus2006$sdtendency_ohr)
+# Aussage: Ich kann mich daran erinnern, dass ich schon einmal krank gespielt habe, um eine Pflicht zu umgehen.
+table(allbus2006$v57, allbus2006$sdtendency_niekrank)
+# Aussage: Bei Gelegenheit habe ich schon einmal jemanden ausgenutzt.
+table(allbus2006$v58, allbus2006$sdtendency_nieausnutzen)
+# Aussage: Wenn ich einen Fehler gemacht habe, bin ich stets bereit, das zuzugeben.
+table(allbus2006$v59, allbus2006$sdtendency_zugeben)
+# Aussage: Ich halte mich immer selber an Grundsätze, deren Befolgung ich von anderen erwarte.
+table(allbus2006$v60, allbus2006$sdtendency_selber)
+# Aussage: Ich bin stets höflich, selbst zu Leuten, die ich abstoßend finde.
+table(allbus2006$v61, allbus2006$sdtendency_hoeflich)
+# Aussage: Manchmal bin ich ärgerlich auf Leute, die mich um einen Gefallen bitten.
+table(allbus2006$v62, allbus2006$sdtendency_nieaerger)
+# Aussage: Ich habe noch nie absichtlich etwas gesagt, um die Gefühle anderer zu verletzen.
+table(allbus2006$v63, allbus2006$sdtendency_nieverletzt)
+```
+
+```{r}
+allbus2006 |> 
+  select(sdtendency_wahl, 
+         sdtendency_niebeleidigt, 
+         sdtendency_ohr, 
+         sdtendency_niekrank, 
+         sdtendency_nieausnutzen, 
+         sdtendency_zugeben, 
+         sdtendency_selber, 
+         sdtendency_hoeflich, 
+         sdtendency_nieaerger, 
+         sdtendency_nieverletzt,
+         sdtendency) |> 
+  head()
+```
+
+
+#### Wahrgenommene Erwünschtheit
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    meinung_wirt = case_when(v81 %in% c(1:4) ~ v81,
+                             TRUE ~ NA),
+    meinung_eltern = case_when(v82 %in% c(1:4) ~ v82,
+                               TRUE ~ NA),
+    meinung_personal = case_when(v83 %in% c(1:4) ~ v83,
+                                 TRUE ~ NA),
+    meinung = (idx_mean(
+      meinung_wirt, 
+      meinung_eltern, 
+      meinung_personal) * (-1) + 4) / 3,
+    bewertung_nielebensstil = v84 * (-1) + 8,
+    bewertung_nielebensstil = case_when(
+      bewertung_nielebensstil %in% (1:7) ~ bewertung_nielebensstil,
+                                     TRUE ~ NA
+      ),
+    bewertung_lebensstil = case_when(
+      v85 %in% (1:7) ~ v85,
+      TRUE ~ NA
+      ),
+    bewertung_niebleiben = v86 * (-1) + 8,
+    bewertung_niebleiben = case_when(
+      bewertung_niebleiben %in% (1:7) ~ bewertung_niebleiben,
+      TRUE ~ NA
+    ),
+    bewertung_bleiben = case_when(v87 %in% (1:7) ~ v87,
+                                  TRUE ~ NA),
+    bewertung_niepolitik = v88 * (-1) + 8,
+    bewertung_niepolitik = case_when(
+      bewertung_niepolitik %in% c(1:7) ~ bewertung_niepolitik,
+      TRUE ~ NA
+    ),
+    bewertung_politik = case_when(v89 %in% c(1:7) ~ v89,
+                                  TRUE ~ NA),
+    bewertung_nieheirat = v90 * (-1) + 8,
+    bewertung_nieheirat = case_when(
+      bewertung_nieheirat %in% c(1:7) ~ bewertung_nieheirat,
+      TRUE ~ NA
+    ),
+    bewertung_heirat = case_when(v91 %in% c(1:7) ~ v91,
+                                 TRUE ~ NA),
+    bewertung = idx_mean(bewertung_nielebensstil,
+                         bewertung_lebensstil,
+                         bewertung_niebleiben,
+                         bewertung_bleiben,
+                         bewertung_niepolitik,
+                         bewertung_politik,
+                         bewertung_nieheirat,
+                         bewertung_heirat),
+    bewertung = (bewertung - 1) / 6,
+    behandlung = case_when(v92 == 1 ~ 0.5,
+                           v92 == 2 ~ 0,
+                           v92 == 3 ~ 1,
+                           TRUE ~ NA),
+    sdperception = idx_mean(
+      meinung, 
+      bewertung, 
+      behandlung),
+    sdperception = sdperception * 1 / max(sdperception, na.rm = TRUE)
+  )
+
+summary(allbus2006$sdperception)
+```
+
+```{r}
+allbus2006 |> 
+  select(
+    meinung_wirt, 
+    meinung_eltern, 
+    meinung_personal,
+    meinung
+  ) |> 
+  head()
+
+allbus2006 |> 
+  select(
+    bewertung_nielebensstil,
+    bewertung_lebensstil,
+    bewertung_niebleiben,
+    bewertung_bleiben,
+    bewertung_niepolitik,
+    bewertung_politik,
+    bewertung_nieheirat,
+    bewertung_heirat,
+    bewertung
+  ) |> 
+  head()
+
+allbus2006 |> 
+  select(
+    meinung, 
+    bewertung, 
+    behandlung,
+    sdperception
+  ) |> 
+  head()
+```
+
+
+### Interviewereffekte
+
+#### Geschlecht
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
     interviewer_sex = case_when(v702 == 2 ~ 0, 
-                                 TRUE ~ v702),
+                                 TRUE ~ v702), # geschlecht interviewer/-in
     interviewer_sex = factor(interviewer_sex,
                              levels = c(0, 1),
-                             labels = c("Männlich", "Weiblich")),
-    interviewer_age = v703,
-    interviewer_agediff = case_when(v703 == 999 ~ NA, 
-                                    TRUE ~ abs(v703 - v27)),
-    interviewer_edu = factor(v705,
-                             levels = c(1:4), 
-                             labels = c("Volks-/Hauptschulabschluss",
-                                        "Mittlere Reife",
-                                        "(Fach-)Hochschulreife",
-                                        "(Fach-)Hochschulabschluss"),
-                             ordered = TRUE)
-    ) 
+                             labels = c("Weiblich", "Männlich"))
+  )
+
+summary(allbus2006$interviewer_sex)
 ```
+
+```{r}
+table(allbus2006$v702, allbus2006$interviewer_sex)
+```
+
+
+#### Zentriertes Alter & Altersdifferenz
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    interviewer_age = v703, # keine NA
+    interviewer_agecen = interviewer_age - mean(interviewer_age, na.rm = TRUE),
+    interviewer_agediff = case_when(v703 == 999 ~ NA, 
+                                    v27 == 999 ~ NA,
+                                    TRUE ~ abs(v703 - v27))
+  )
+summary(allbus2006$interviewer_age)
+summary(allbus2006$interviewer_agecen)
+summary(allbus2006$interviewer_agediff)
+```
+
+```{r}
+allbus2006 |> 
+  select(v27, interviewer_agediff, interviewer_age, interviewer_agecen) |> 
+  head()
+```
+
+
+#### Bildung
+
+```{r cleaning ZA4500_patch_v2-0-0.do}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    interviewer_edu = case_when(v705 %in% c(1, 2) ~ 0,
+                                v705 %in% c(3, 4) ~ 1,
+                                TRUE ~ NA),
+    interviewer_edu = factor(interviewer_edu,
+                             levels = c(0, 1), 
+                             labels = c("ohne Hochschulreife",
+                                        "mit Hochschulabschluss"))
+    )
+
+summary(allbus2006$interviewer_edu)
+```
+
+```{r}
+table(allbus2006$v705, allbus2006$interviewer_edu)
+```
+
+
+### Personeneffekte
+
+#### Alter & Alter zentriert
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    
+    age = case_when(v27 == 999 ~ NA,
+                      TRUE ~ v27),
+    age_cen = age - mean(age, na.rm = TRUE)
+  )
+
+summary(allbus2006$age)
+summary(allbus2006$age_cen)
+```
+
+```{r}
+allbus2006 |> 
+  select(v27, age, age_cen) |> 
+  head()
+```
+
+#### Geschlecht
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    sex = v174 - 1,
+    sex = factor(sex,
+                 levels = c(0, 1),
+                 labels = c("Männlich", "Weiblich")), # geschlecht befragte person
+  )
+
+summary(allbus2006$sex)
+```
+
+```{r}
+table(allbus2006$v174, allbus2006$sex)
+```
+
+
+#### Bildung
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  mutate(
+    edu = case_when(v175 %in% c(1:3) ~ 0, # ohne Abschluss/Volks-, Hauptschulabschluss/Mittlere Reife
+                    v175 %in% c(4, 5) ~ 1, # Fachhochschulreife/Hochschulreife
+                    TRUE ~ NA), # bildung befragte person
+    edu = factor(edu,
+                 levels = c(0, 1),
+                 labels = c("ohne Hochschulreife", "mit Hochschulreife"))
+  )
+
+summary(allbus2006$edu)
+```
+
+```{r}
+table(allbus2006$v175, allbus2006$edu)
+```
+
+## Variablenkonstruktion
+
+| **Bezeichnung** | **Typ**    | **Konstruktion** | **Verwendete Variablen** |
+|-----------------|------------|------------------|--------------------------|
+| immigration     | Index      | 0-7              | v43 bis v46              |
+| split           | Dummy      | 1; wenn CAPI     | v47                      |
+| sdtendeny       | Index      | 0-1              | v54 bis v63              |
+| sdperception    | Index      | 0-1              | v81 bis v92              |
+| sex             | Dummy      | 1; wenn weiblich | v174                     |
+| intervIewsex    | Dummy      | 1; wenn          | v702                     |
+| age             | Metrisch   | 18-94            | v27                      |
+| split           | Kategorial | 1 bis 4          | v47                      |
+
+```{r labels}
+allbus2006 <- allbus2006 |> 
+  set_variable_labels(
+    immigration = "Einstellungen gegenüber Immigration",
+    immigration_log = "Logarithmierte Einstellungen gegenüber Immigration",
+    split = "Split Befragungsmodus",
+    split_erfolg = "Erfolg des Experiments",
+    sdtendency = "Tendenz zu sozialer Erwünschtheit",
+    sdperception = "Wahrnehmung der Erwünschtheit",
+    interviewer_sex = "Geschlecht des/der Interviewers/-in",
+    interviewer_age = "Alter der/des Interviewer/-in",
+    interviewer_agecen = "Zentriertes Alter der/des Interviewer/-in",
+    interviewer_agediff = "Altersdifferenz Interviewer/-in Befragte/-r",
+    interviewer_edu = "Bildung des/der Interviewer/-in",
+    age = "Alter",
+    age_cen = "Zentriertes Alter",
+    sex = "Geschlecht",
+    edu = "Bildung"
+  )
+```
+
+```{r}
+masszahlen <- allbus2006 |> 
+  select(
+    immigration,
+    immigration_log,
+    split,
+    split_erfolg,
+    sdtendency,
+    sdperception,
+    interviewer_sex,
+    interviewer_age,
+    interviewer_agecen,
+    interviewer_agediff,
+    interviewer_edu,
+    age,
+    age_cen,
+    sex,
+    edu
+  ) |> 
+  drop_na() |> 
+  gtsummary::tbl_summary() |> 
+  modify_header(label = "Maßzahlen ALLBUS 2006, ohne Ost-Oversample")
+
+masszahlen
+
+masszahlen |> 
+  gtsummary::as_tibble() |> 
+  print() |> 
+  write_csv(here::here("tables", "masszahlen.csv"))
+```
+
+
+## Stichprobenkonstruktion
+
+
+
+
+```{r stipro}
+stipro <- allbus2006 |> 
+  mutate(sample = case_when(
+    v43 == 0 ~ 0,
+    v43 == 99 ~ 1,
+    is.na(sdtendency) ~ 2,
+    is.na(sdperception) ~ 3,
+    is.na(split_erfolg) ~ 4,
+    is.na(interviewer_sex) ~ 5,
+    is.na(interviewer_age) ~ 6,
+    is.na(interviewer_edu) ~ 7,
+    is.na(age) ~ 8,
+    is.na(sex) ~ 9,
+    v175 == 6 ~ 10,
+    v175 == 7 ~ 11,
+    v175 == 99 ~ 12,
+    TRUE ~ 13,
+  ),
+  sample = factor(sample, labels = c(
+    "Keine deutsche Staatsbürgerschaft",
+    "Index zu Einstellungen gegenüber Immigration missing",
+    "Index zu Tendenz zu sozialer Erwünschtheit missing",
+    "Index zu Wahrnehmung zu Erwünschtheit missing",
+    "Keine Angabe zu Alter",
+    "Anderer Bildungsabschluss",
+    "Noch Schüler*in",
+    "Keine Angabe zu Bildung",
+    "Analysesample"))
+  ) |> 
+  select(sample) |> 
+  set_variable_labels(sample = "Ausschlusskriterien") |> 
+  tbl_summary() |> 
+  modify_header(label = "ALLBUS 2006, ohne Ost-Oversample")
+
+stipro
+
+stipro |> 
+  gtsummary::as_tibble() |> 
+  write_csv(here::here("tables", "stichprobenkonstruktion.csv"))
+
+```
+
+```{r stipro missing immigration}
+allbus2006 |> 
+  filter(v43 != 0) |> # deutsche Staatsbürgerschaft
+  filter(is.na(immigration)) |> # Missing für alle 4 Fragen zu Immigration
+  select(split) # Split
+```
+
+
+## Datenexport
+
+```{r}
+allbus2006 <- allbus2006 |> 
+  select(
+    immigration,
+    immigration_log,
+    split,
+    split_erfolg,
+    sdtendency,
+    sdperception,
+    interviewer_sex,
+    interviewer_age,
+    interviewer_agecen,
+    interviewer_agediff,
+    interviewer_edu,
+    age,
+    age_cen,
+    sex,
+    edu
+  ) |> 
+  drop_na()
+```
+
 
 ```{r save csv}
 write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
@@ -94,16 +636,35 @@ write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 
 
 
-# Results
 
-## Univariate Deskription
+# Analyse
+
+## Deskription
+
+```{r}
+tbl_summary(allbus2006)
+```
+
+
 
 ## Zentraler Zusammenhang
 
 ```{r}
+allbus2006  |> 
+  select(immigration, split_erfolg) |> 
+  tbl_summary(by = split_erfolg)  |> 
+  add_p() |> 
+  gtsummary::as_tibble() |> 
+  write_csv(here::here("tables", "vergleich.csv"))
+```
+
+```{r}
 allbus2006 |> 
-  group_by(split_selbst) |> 
-  summarize(mean(immigration, na.rm = TRUE))
+  group_by(split_erfolg) |> 
+  summarize(mean_immigration = mean(immigration, na.rm = TRUE))
+
+tbl_sum(allbus2006 |> 
+              select(immigration, split_erfolg))
 ```
 
 
@@ -114,14 +675,18 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_violin() 
 
-ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
+ggplot(data = allbus2006, mapping = aes(x = split_erfolg, y = immigration)) +
   geom_boxplot()
 
-ggplot(data = allbus2006, mapping = aes(x = split_selbst, y = immigration)) +
+ggplot(data = allbus2006, mapping = aes(x = split_erfolg, y = immigration)) +
   geom_violin() 
+
+ggplot(data = allbus2006, mapping = aes(x = split_erfolg, y = immigration)) +
+  geom_point() +
+  geom_jitter()
 ```
 
-# Linear Regression
+# Lineare Regression
 
 ## Unabhängigkeit
 
@@ -149,15 +714,23 @@ hist(allbus2006$immigration)
 ## Einfache lineare Regression
 
 ```{r}
-split_immigration.lm <- lm(immigration ~ split_selbst, data = allbus2006)
+split_erfolg_immigration.lm <- lm(immigration ~ split_erfolg, data = allbus2006)
+summary(split_erfolg_immigration.lm) # casi erfolg
 
-summary(split_immigration.lm)
+split_immigration.lm <- lm(immigration ~ split, data = allbus2006)
+summary(split_immigration.lm) # casi
 ```
 
 ## Multiple lineare Regression
 
 ```{r}
-split_immigration_multiple.lm <- lm(immigration ~ split_selbst + age_cen + edu + sex +interviewer_sex + interviewer_agediff, data = allbus2006)
+
+split_erfolg_immigration_multiple.lm <- lm(immigration ~ split_erfolg + age_cen + edu + sex +interviewer_sex + interviewer_agediff + interviewer_age, data = allbus2006)
+
+summary(split_erfolg_immigration_multiple.lm)
+
+
+split_immigration_multiple.lm <- lm(immigration ~ split + age_cen + edu + sex +interviewer_sex + interviewer_agediff + interviewer_age, data = allbus2006)
 
 summary(split_immigration_multiple.lm)
 ```
