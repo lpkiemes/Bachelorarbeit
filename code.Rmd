@@ -280,61 +280,6 @@ allbus2006 |>
 #### SD-Wahrnehmung
 
 ```{r sdperception}
-# Skala V81 bis V83
-# 1 völlig in Ordnung
-# 2 eher in Ordnung
-# 3 eher nicht in Ordnung
-# 4 überhaupt nicht in Ordnung
-# 9 Keine Angabe
-
-# Frage
-# Ein Gastwirt weigert sich, in seinem Lokal Ausländer zu bedienen. (-)
-# Eltern verbieten Ihrer 17jährigen Tochter die Freundschaft mit einem türkischen Jugendlichen. (-)
-# Ein Unternehmer, der Personal abbauen muss, entlässt zuerst die ausländischen Arbeitnehmer. (-)
-
-
-allbus2006 <- allbus2006 |> 
-  mutate(
-    meinung_wirt = case_when(v81 %in% c(1:4) ~ v81,
-                             TRUE ~ NA),
-    meinung_eltern = case_when(v82 %in% c(1:4) ~ v82,
-                               TRUE ~ NA),
-    meinung_personal = case_when(v83 %in% c(1:4) ~ v83,
-                                 TRUE ~ NA)
-  )
-
-allbus2006 |> 
-  group_by(v81, meinung_wirt) |> 
-  summarise(n())
-
-allbus2006 |> 
-  group_by(v82, meinung_eltern) |> 
-  summarise(n())
-
-allbus2006 |> 
-  group_by(v83, meinung_personal) |> 
-  summarise(n())
-
-# Index
-
-allbus2006$mein_sdperception <- rowMeans(allbus2006[,c("meinung_wirt", 
-                                                "meinung_eltern", 
-                                                "meinung_personal")], na.rm = TRUE)
-
-allbus2006 |>
-  select(mein_sdperception) |> 
-  summary()
-
-allbus2006 |> 
-  select(meinung_wirt, meinung_eltern, meinung_personal, 
-         mein_sdperception)
-
-# Index standardisieren
-
-allbus2006 <- allbus2006 |> 
-  mutate(mein_sdperception = (mein_sdperception - min(mein_sdperception, na.rm = TRUE)) / 
-           (max(mein_sdperception, na.rm = TRUE) - min(mein_sdperception, na.rm = TRUE)))
-
 # Skala
 # 1 -3 Sehr negativ bewertet
 # 2 -2
@@ -551,10 +496,15 @@ allbus2006 <- allbus2006 |>
     sex = factor(sex,
                  levels = c(0, 1),
                  labels = c("Männlich", "Weiblich")), # geschlecht befragte person
+    int_sexdiff = abs(v702 - v174)
   )
 
 allbus2006 |> 
-  group_by(v174, sex) |> 
+  group_by(v174, sex, int_sex, int_sexdiff) |> 
+  summarise(n())
+
+allbus2006 |> 
+  group_by(sex, int_sex, int_sexdiff) |> 
   summarise(n())
 ```
 
@@ -610,6 +560,7 @@ allbus2006 <- allbus2006 |>
     sdtendency = "Tendenz zu sozialer Erwünschtheit",
     mein_sdperception = "Meinung zur Erwünschtheit",
     wert_sdperception = "Bewertung der Erwünschtheit",
+    int_sexdiff = "Anderes Geschlecht Interviewer/-in und Interviewee",
     int_sex = "Geschlecht des/der Interviewers/-in",
     int_age = "Alter der/des Interviewer/-in",
     int_agecen = "Zentriertes Alter der/des Interviewer/-in",
@@ -634,6 +585,7 @@ masszahlen <- allbus2006 |>
     mein_sdperception,
     wert_sdperception,
     int_sex,
+    int_sexdiff,
     int_age,
     int_agecen,
     int_agediff,
@@ -730,6 +682,7 @@ allbus2006 <- allbus2006 |>
     mein_sdperception,
     wert_sdperception,
     int_sex,
+    int_sexdiff,
     int_age,
     int_agecen,
     int_agediff,
@@ -787,9 +740,6 @@ t.test(allbus2006$immigration ~ allbus2006$split, var.equal = TRUE, alternative 
 ```{r cohens d}
 cohensD(allbus2006$immigration ~ allbus2006$split)
 ```
-
-
-
 
 
 ```{r}
@@ -864,15 +814,15 @@ summary(m2.lm)
 ```
 
 ```{r m3}
-m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006)
+m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
+                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006)
 
 summary(m3.lm)
 ```
 
 ```{r m4}
-m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + mein_sdperception + wert_sdperception, data = allbus2006)
+m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
+                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + wert_sdperception, data = allbus2006)
 
 summary(m4.lm)
 ```
@@ -901,7 +851,7 @@ modelsummary::modelplot(list(m1.lm),
 modelsummary::modelplot(list(m1.lm, m2.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1], colours_colourblind[2])) +
+  scale_color_manual(values = c(colours_colourblind[1:2])) +
   ggtitle("Koeffizientenplot") +
   labs(
     colour = "Schätzer"
@@ -910,7 +860,7 @@ modelsummary::modelplot(list(m1.lm, m2.lm),
 modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1], colours_colourblind[2], colours_colourblind[4])) +
+  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4])) +
   ggtitle("Koeffizientenplot") +
   labs(
     colour = "Schätzer"
@@ -919,7 +869,7 @@ modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm),
 modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1], colours_colourblind[2], colours_colourblind[4], colours_colourblind[7])) +
+  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
   ggtitle("Koeffizientenplot") +
   labs(
     colour = "Schätzer"
@@ -928,6 +878,8 @@ modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
 ```
 
 ## Robustheitsanalyse
+
+### CASI ohne Hilfe
 
 ```{r}
 allbus2006_nohilfe <- allbus2006 |> 
@@ -939,41 +891,36 @@ allbus2006_capi <- allbus2006 |>
 
 ```
 
-```{r m1_nohilfe}
-m1_nohilfe.lm <- lm(immigration ~ split, data = allbus2006_nohilfe)
-summary(m1_nohilfe.lm) # casi
-```
-
 ```{r m2_nohilfe}
-m2_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006_nohilfe)
+m2_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex, data = allbus2006_nohilfe)
 
 summary(m2_nohilfe.lm)
 ```
 
 ```{r m3_nohilfe}
-m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006_nohilfe)
+m3_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
+                                     int_agediff + int_agecen, data = allbus2006_nohilfe)
 
 summary(m3_nohilfe.lm)
 ```
 
 ```{r m4_nohilfe}
-m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + mein_sdperception + wert_sdperception, data = allbus2006_nohilfe)
+m4_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
+                                     int_agediff + int_agecen + sdtendency + wert_sdperception, data = allbus2006_nohilfe)
 
 summary(m4_nohilfe.lm)
 ```
 
 ```{r modelsummary_nohilfe}
-modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T)
+modelsummary::modelsummary(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T)
 
-modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T, output = "markdown", statistic = 'p.value')
+modelsummary::modelsummary(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T, output = "markdown", statistic = 'p.value')
 
 
-modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
+modelsummary::modelplot(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1], colours_colourblind[2], colours_colourblind[4], colours_colourblind[7])) +
+  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
   ggtitle("Koeffizientenplot") +
   labs(
     colour = "Schätzer"
@@ -981,41 +928,38 @@ modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_noh
 
 ```
 
-```{r m1_capi}
-m1_capi.lm <- lm(immigration ~ split, data = allbus2006_capi)
-summary(m1_capi.lm) # casi
-```
+### CAPI
 
 ```{r m2_capi}
-m2_capi.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006_capi)
+m2_capi.lm <- lm(immigration ~ age_cen + edu + sex, data = allbus2006_capi)
 
 summary(m2_capi.lm)
 ```
 
 ```{r m3_capi}
-m3_capi.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006_capi)
+m3_capi.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
+                                     int_agediff + int_agecen, data = allbus2006_capi)
 
 summary(m3_capi.lm)
 ```
 
 ```{r m4_capi}
-m4_capi.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex +
-                                     int_sex * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + mein_sdperception + wert_sdperception, data = allbus2006_capi)
+m4_capi.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
+                                     int_agediff + int_agecen + sdtendency + wert_sdperception, data = allbus2006_capi)
 
 summary(m4_capi.lm)
 ```
 
 ```{r modelsummary_capi}
-modelsummary::modelsummary(list(m1_capi.lm, m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T)
+modelsummary::modelsummary(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T)
 
-modelsummary::modelsummary(list(m1_capi.lm, m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T, output = "markdown", statistic = 'p.value')
+modelsummary::modelsummary(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T, output = "markdown", statistic = 'p.value')
 
 
-modelsummary::modelplot(list(m1_capi.lm, m2_capi.lm, m3_capi.lm, m4_capi.lm),
+modelsummary::modelplot(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1], colours_colourblind[2], colours_colourblind[4], colours_colourblind[7])) +
+  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
   ggtitle("Koeffizientenplot") +
   labs(
     colour = "Schätzer"
