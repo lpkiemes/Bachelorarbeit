@@ -21,7 +21,7 @@ if (!require("pacman")) install.packages("pacman"); library(pacman)
 pacman::p_load(devtools)
 #if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
 #if (!require("summarytools")) install.packages("summarytools"); library(summarytools)
-pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary)
+pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary, olsrr)
 
 here::i_am("code.Rmd")
 
@@ -97,8 +97,25 @@ allbus2006 <- allbus2006 |>
                                    TRUE ~ NA)
   ) 
 
+### Cronbachs alpha 
+
+alpha_immigration <- allbus2006 |> 
+  select(immigration_anpassen, immigration_heim, immigration_unpolit, immigration_heirat) |> 
+  alpha(check.keys = TRUE)
+
+alpha_immigration
+
+alpha_immigration[["total"]]$raw_alpha |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_immigration.txt"), sep = "", col.names = FALSE, row.names = FALSE)
+
+
+
+### Index
 
 allbus2006$immigration <- rowMeans(allbus2006[,c("immigration_anpassen", "immigration_heim", "immigration_unpolit", "immigration_heirat")], na.rm = TRUE)
+
+### Test
 
 allbus2006 <- allbus2006 |> 
   mutate(immigration_log = log(immigration))
@@ -212,6 +229,23 @@ allbus2006 <- allbus2006 |>
                                        TRUE ~ NA)
   )
 
+### Cronbachs alpha
+
+alpha_sdtendency <- allbus2006 |> 
+  select(sdtendency_wahl, sdtendency_niebeleidigt, sdtendency_ohr, 
+         sdtendency_niekrank, sdtendency_nieausnutzen, sdtendency_zugeben, 
+         sdtendency_selber, sdtendency_hoeflich, sdtendency_nieaerger, 
+         sdtendency_nieverletzt) |> 
+  alpha(check.keys = TRUE) 
+
+alpha_sdtendency
+
+alpha_sdtendency[["total"]]$raw_alpha |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_sdtendency.txt"), sep = "", col.names = FALSE, row.names = FALSE)
+
+
+### Test
 
 allbus2006 |> 
   group_by(v54, sdtendency_wahl) |> 
@@ -266,6 +300,8 @@ allbus2006$sdtendency <- rowMeans(allbus2006[,c("sdtendency_wahl",
                                                 "sdtendency_nieaerger", 
                                                 "sdtendency_nieverletzt")], na.rm = TRUE)
 
+# Test 
+
 allbus2006 |>
   select(sdtendency) |> 
   summary()
@@ -302,37 +338,28 @@ allbus2006 |>
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    bewertung_nielebensstil = v84 * (-1) + 8,
-    bewertung_nielebensstil = case_when(
-      bewertung_nielebensstil %in% (1:7) ~ bewertung_nielebensstil,
-                                     TRUE ~ NA
-      ),
-    bewertung_lebensstil = case_when(
-      v85 %in% (1:7) ~ v85,
-      TRUE ~ NA
-      ),
-    bewertung_niebleiben = v86 * (-1) + 8,
-    bewertung_niebleiben = case_when(
-      bewertung_niebleiben %in% (1:7) ~ bewertung_niebleiben,
-      TRUE ~ NA
-    ),
-    bewertung_bleiben = case_when(v87 %in% (1:7) ~ v87,
-                                  TRUE ~ NA),
-    bewertung_niepolitik = v88 * (-1) + 8,
-    bewertung_niepolitik = case_when(
-      bewertung_niepolitik %in% c(1:7) ~ bewertung_niepolitik,
-      TRUE ~ NA
-    ),
-    bewertung_politik = case_when(v89 %in% c(1:7) ~ v89,
-                                  TRUE ~ NA),
-    bewertung_nieheirat = v90 * (-1) + 8,
-    bewertung_nieheirat = case_when(
-      bewertung_nieheirat %in% c(1:7) ~ bewertung_nieheirat,
-      TRUE ~ NA
-    ),
-    bewertung_heirat = case_when(v91 %in% c(1:7) ~ v91,
-                                 TRUE ~ NA)
-  )
+    bewertung_nielebensstil = case_when(v84 == 99 ~ NA, TRUE ~ v84),
+    bewertung_lebensstil = case_when(v85 == 99 ~ NA, TRUE ~ v85),
+    lebensstil = abs(bewertung_nielebensstil - bewertung_lebensstil), #diff
+    
+    bewertung_niearbeit = case_when(v86 == 99 ~ NA, TRUE ~ v86),
+    bewertung_arbeit = case_when(v87 == 99 ~ NA, TRUE ~ v87),
+    arbeitsplatz = abs(bewertung_niearbeit - bewertung_arbeit), #diff
+    
+    bewertung_niepolitik = case_when(v88 == 99 ~ NA, TRUE ~ v88),
+    bewertung_politik = case_when(v89 == 99 ~ NA, TRUE ~ v89),
+    politik = abs(bewertung_niepolitik - bewertung_politik), #diff
+    
+    bewertung_nieehe = case_when(v90 == 99 ~ NA, TRUE ~ v90),
+    bewertung_ehe = case_when(v91 == 99 ~ NA, TRUE ~ v91),
+    ehepartner = abs(bewertung_nieehe - bewertung_ehe) #diff
+  ) 
+
+# Test
+
+allbus2006 |> 
+  select(v84, bewertung_nielebensstil, v85, bewertung_lebensstil, lebensstil)
+
 
 allbus2006 |> 
   group_by(v84, bewertung_nielebensstil) |> 
@@ -343,11 +370,11 @@ allbus2006 |>
   summarise(n())
 
 allbus2006 |> 
-  group_by(v86, bewertung_niebleiben) |> 
+  group_by(v86, bewertung_niearbeit) |> 
   summarise(n())
 
 allbus2006 |> 
-  group_by(v87, bewertung_bleiben) |> 
+  group_by(v87, bewertung_arbeit) |> 
   summarise(n())
 
 allbus2006 |> 
@@ -359,33 +386,43 @@ allbus2006 |>
   summarise(n())
 
 allbus2006 |> 
-  group_by(v90, bewertung_nieheirat) |> 
+  group_by(v90, bewertung_nieehe) |> 
   summarise(n())
 
 allbus2006 |> 
-  group_by(v91, bewertung_heirat) |> 
+  group_by(v91, bewertung_ehe) |> 
   summarise(n())
+
+### Cronbachs alpha
+
+alpha_sdperception <- allbus2006 |> 
+  select(lebensstil, arbeitsplatz, politik, ehepartner) |> 
+  alpha(check.keys = TRUE) 
+
+alpha_sdperception
+
+alpha_sdperception[["total"]]$raw_alpha |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_sdperception.txt"), sep = "", col.names = FALSE, row.names = FALSE)
+
+
 
 # Index
 
-allbus2006$wert_sdperception <- rowMeans(allbus2006[,c("bewertung_nielebensstil", 
-                                                "bewertung_lebensstil", 
-                                                "bewertung_niebleiben", 
-                                                "bewertung_bleiben", 
-                                                "bewertung_niepolitik", 
-                                                "bewertung_politik", 
-                                                "bewertung_nieheirat", 
-                                                "bewertung_heirat")], na.rm = TRUE)
+allbus2006$sdperception <- rowMeans(allbus2006[,c("lebensstil", 
+                                                  "arbeitsplatz", 
+                                                  "politik", 
+                                                  "ehepartner")], na.rm = TRUE)
 
 # Index standardisieren 
 
 allbus2006 <- allbus2006 |> 
-  mutate(wert_sdperception = (wert_sdperception - min(wert_sdperception, na.rm = TRUE)) / 
-           (max(wert_sdperception, na.rm = TRUE) - min(wert_sdperception, na.rm = TRUE)))
+  mutate(sdperception = (sdperception - min(sdperception, na.rm = TRUE)) / 
+           (max(sdperception, na.rm = TRUE) - min(sdperception, na.rm = TRUE)))
 
 
 
-summary(allbus2006$wert_sdperception)
+summary(allbus2006$sdperception)
 ```
 
 
@@ -393,7 +430,7 @@ summary(allbus2006$wert_sdperception)
 
 #### Geschlecht
 
-```{r interviewer age}
+```{r interviewer sex}
 # Skala
 # 1 Männlich 
 # 2 Weiblich
@@ -413,24 +450,32 @@ allbus2006 |>
   summarise(n())
 ```
 
-#### Zentriertes Alter & Altersdifferenz
+#### Alter & Altersdifferenz
 
 ```{r interviewer age cen & agediff}
+### v703 Alter
+
 allbus2006 <- allbus2006 |> 
   mutate(
     int_age = v703, # keine NA
     int_agecen = int_age - mean(int_age, na.rm = TRUE),
     int_agediff = case_when(v703 == 999 ~ NA, 
                                     v27 == 999 ~ NA,
-                                    TRUE ~ abs(v703 - v27))
+                                    TRUE ~ abs(v703 - v27)),
+    int_edu = case_when(v705 == 1 | v705 == 2 ~ 0,
+                        v705 == 3 | v705 == 4 ~ 1,
+                        TRUE ~NA)
   )
+
+
 summary(allbus2006$int_age)
 summary(allbus2006$int_agecen)
 summary(allbus2006$int_agediff)
 
 allbus2006 |> 
-  select(v27, int_agediff, int_age, int_agecen) |> 
-  head()
+  select(v27, int_agediff, int_age, int_agecen)
+
+
 ```
 
 #### Bildung
@@ -444,19 +489,38 @@ allbus2006 |>
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    interviewer_edu = case_when(v705 %in% c(1, 2) ~ 0,
+    int_edu = case_when(v705 %in% c(1, 2) ~ 0,
                                 v705 %in% c(3, 4) ~ 1,
                                 TRUE ~ NA),
-    interviewer_edu = factor(interviewer_edu,
+    int_edu = factor(int_edu,
                              levels = c(0, 1), 
                              labels = c("ohne Abi",
                                         "Abi"))
     )
 
 allbus2006 |> 
-  group_by(v705, interviewer_edu) |> 
+  group_by(v705, int_edu) |> 
   summarise(n())
+
+allbus2006 |> 
+  select(v705, int_edu)
 ```
+
+### Erfahrung
+
+```{r interviewer exp}
+### v706
+#0 Noch kein ganzes Jahr
+
+allbus2006 <- allbus2006 |> 
+  mutate(
+    int_exp = v706
+  )
+
+allbus2006 |> 
+  select(v706, int_exp)
+```
+
 
 
 ### Personeneffekte
@@ -558,14 +622,14 @@ allbus2006 <- allbus2006 |>
     immigration_log = "Logarithmierte Einstellungen gegenüber Immigration",
     split = "Split Befragungsmodus",
     sdtendency = "Tendenz zu sozialer Erwünschtheit",
-    mein_sdperception = "Meinung zur Erwünschtheit",
-    wert_sdperception = "Bewertung der Erwünschtheit",
+    sdperception = "Bewertung der Erwünschtheit",
     int_sexdiff = "Anderes Geschlecht Interviewer/-in und Interviewee",
     int_sex = "Geschlecht des/der Interviewers/-in",
     int_age = "Alter der/des Interviewer/-in",
     int_agecen = "Zentriertes Alter der/des Interviewer/-in",
     int_agediff = "Altersdifferenz Interviewer/-in Befragte/-r",
-    interviewer_edu = "Bildung des/der Interviewer/-in",
+    int_edu = "Bildung des/der Interviewer/-in",
+    int_exp = "Erfahrung des/der Interviewer/-in",
     age = "Alter",
     age_cen = "Zentriertes Alter",
     sex = "Geschlecht",
@@ -582,14 +646,14 @@ masszahlen <- allbus2006 |>
     split,
     split_erfolg,
     sdtendency,
-    mein_sdperception,
-    wert_sdperception,
+    sdperception,
     int_sex,
     int_sexdiff,
     int_age,
     int_agecen,
     int_agediff,
-    interviewer_edu,
+    int_edu,
+    int_exp,
     age,
     age_cen,
     sex,
@@ -615,11 +679,10 @@ allbus2006 <- allbus2006 |>
     v43 == 0 ~ 0,
     is.na(immigration) ~ 1,
     is.na(sdtendency) ~ 2,
-    is.na(mein_sdperception) ~ 3,
-    is.na(wert_sdperception) ~ 4,
+    is.na(sdperception) ~ 4,
     is.na(int_sex) ~ 5,
     is.na(int_age) ~ 6,
-    is.na(interviewer_edu) ~ 7,
+    is.na(int_edu) ~ 7,
     is.na(age) ~ 8,
     is.na(sex) ~ 9,
     is.na(edu) ~ 10,
@@ -643,7 +706,6 @@ stipro <- allbus2006 |>
     "Keine deutsche Staatsbürgerschaft",
     "Index zu Einstellungen gegenüber Immigration missing",
     "Index zu Tendenz zu sozialer Erwünschtheit missing",
-    "Index zu Meinung zu sozialer Erwünschtheit missing",
     "Index zu Bewertung zur Erwünschtheit missing",
     "Alter missing",
     "Bildung missing",
@@ -679,14 +741,14 @@ allbus2006 <- allbus2006 |>
     split,
     split_erfolg,
     sdtendency,
-    mein_sdperception,
-    wert_sdperception,
+    sdperception,
     int_sex,
     int_sexdiff,
     int_age,
     int_agecen,
     int_agediff,
-    interviewer_edu,
+    int_edu,
+    int_exp,
     age,
     age_cen,
     sex,
@@ -762,31 +824,39 @@ ggplot(data = allbus2006 |> select(immigration, split) |> drop_na(), mapping = a
 
 # Lineare Regression
 
-## Unabhängigkeit
+
+## Voraussetzungen 
+
+### Unabhängigkeit
 
 ```{r}
-cor(allbus2006 |> 
-      select(
-        immigration,
-    immigration_log,
-    sdtendency,
-    mein_sdperception,
-    wert_sdperception,
-    int_age,
-    int_agecen,
-    int_agediff,
-    age,
-    age_cen,
-      )) # all independent variables
-
-cor(allbus2006 |> 
-      select(
-        age, 
-        immigration
-        ))
+# cor.test(allbus2006 |> 
+#       select(
+#         immigration,
+#         sdtendency,
+#         sdperception,
+#         int_age,
+#         int_agecen,
+#         int_agediff,
+#         int_exp,
+#         age,
+#         age_cen,
+#       ), 
+#     method = "spearman") # all independent variables
 ```
 
-## Normalverteilung
+```{r}
+# for (a in 2:length(colnames(allbus2006))) {
+#   for (b in 3:length(colnames(allbus2006))) {
+#     cor.test(x = as.numeric(allbus2006[, a]), y = as.numeric(allbus2006[, b]), method = "spearman")
+#   }
+# }
+```
+
+
+
+
+### Normalverteilung
 
 ```{r}
 allbus2006 |> 
@@ -822,7 +892,7 @@ summary(m3.lm)
 
 ```{r m4}
 m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
-                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + wert_sdperception, data = allbus2006)
+                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + sdperception, data = allbus2006)
 
 summary(m4.lm)
 ```
@@ -879,45 +949,45 @@ modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
 
 ## Robustheitsanalyse
 
-### CASI ohne Hilfe
 
-```{r}
+```{r nohilfe subset}
 allbus2006_nohilfe <- allbus2006 |> 
-  filter(split_erfolg == "ja, ohne Hilfe")
+  filter(split_erfolg == "ja, ohne Hilfe" | split_erfolg == "CAPI")
+```
 
-allbus2006_capi <- allbus2006 |> 
-  filter(split_erfolg == "CAPI")
+```{r m1_nohilfe}
+m1_nohilfe.lm <- lm(immigration ~ split, data = allbus2006_nohilfe)
 
-
+summary(m1_nohilfe.lm)
 ```
 
 ```{r m2_nohilfe}
-m2_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex, data = allbus2006_nohilfe)
+m2_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006_nohilfe)
 
 summary(m2_nohilfe.lm)
 ```
 
 ```{r m3_nohilfe}
-m3_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
-                                     int_agediff + int_agecen, data = allbus2006_nohilfe)
+m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
+                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006_nohilfe)
 
 summary(m3_nohilfe.lm)
 ```
 
 ```{r m4_nohilfe}
-m4_nohilfe.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
-                                     int_agediff + int_agecen + sdtendency + wert_sdperception, data = allbus2006_nohilfe)
+m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
+                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + sdperception, data = allbus2006_nohilfe)
 
 summary(m4_nohilfe.lm)
 ```
 
 ```{r modelsummary_nohilfe}
-modelsummary::modelsummary(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T)
+modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T)
 
-modelsummary::modelsummary(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T, output = "markdown", statistic = 'p.value')
+modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T, output = "markdown", statistic = 'p.value')
 
 
-modelsummary::modelplot(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
+modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
   scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
@@ -928,44 +998,6 @@ modelsummary::modelplot(list(m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
 
 ```
 
-### CAPI
-
-```{r m2_capi}
-m2_capi.lm <- lm(immigration ~ age_cen + edu + sex, data = allbus2006_capi)
-
-summary(m2_capi.lm)
-```
-
-```{r m3_capi}
-m3_capi.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
-                                     int_agediff + int_agecen, data = allbus2006_capi)
-
-summary(m3_capi.lm)
-```
-
-```{r m4_capi}
-m4_capi.lm <- lm(immigration ~ age_cen + edu + sex + int_sexdiff +
-                                     int_agediff + int_agecen + sdtendency + wert_sdperception, data = allbus2006_capi)
-
-summary(m4_capi.lm)
-```
-
-```{r modelsummary_capi}
-modelsummary::modelsummary(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T)
-
-modelsummary::modelsummary(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),  stars = T, output = "markdown", statistic = 'p.value')
-
-
-modelsummary::modelplot(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),
-                        background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
-  aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
-  ggtitle("Koeffizientenplot") +
-  labs(
-    colour = "Schätzer"
-  )
-
-```
 
 ## Regressionsdiagnostik
 
@@ -973,24 +1005,59 @@ modelsummary::modelplot(list(m2_capi.lm, m3_capi.lm, m4_capi.lm),
 
 ```{r}
 plot(m4.lm, 1)
+
+# Paarweises Streudiagramm
+# (relevant sind nur diejenigen Streudiagramme, 
+# die die Kriteriumsvariable mit einschließen)
+pairs(allbus2006 |> select(
+  immigration, split, age_cen, edu, sex, int_sexdiff, int_agediff, int_agecen, sdtendency, sdperception
+), pch = 19, lower.panel = NULL)
+
+#Rainbow-Test (mit lmtest-Package) auf Linearität
+# (signifikant => Verletzung der Linearität)
+lmtest::raintest(m4.lm)
 ```
 
 
 ### Normalverteilung der Residuen
 
 ```{r}
+# (Histogramm sollte möglichst nahe an der 
+# Normalverteilung liegen,
+# vor allem an den beiden Außenrändern der Verteilung)
+olsrr::ols_plot_resid_hist(m4.lm)
+
+# QQ Plot
 plot(m4.lm, 2)
+
+
+# Shapiro-Wilk-Test auf Normalverteilung
+# (signifikant => Residuen nicht normalverteilt)
+shapiro.test(m4.lm$residuals)
+
+# Schiefe und Kurtosis (mit moments-Package)
+#(Bei Normalverteilung skewness nahe 0 und kurtosis nahe 3)
+
+moments::skewness(m4.lm$residuals)
+moments::kurtosis(m4.lm$residuals)
+
+# Signifikanztests für Schiefe und Kurtosis 
+#(mit moments-Package)
+#(signifikant = Residuen nicht normalverteilt)
+moments::agostino.test(m4.lm$residuals)
+moments::anscombe.test(m4.lm$residuals)
 ```
 
 
 ### Homoskedaszität
 
 ```{r}
+# graphisch
 plot(m4.lm, 3)
 
-# par(mfrow=c(2,2))
-# plot(m4.lm)
-# par(mfrow=c(1,1))
+# Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
+# (signifikant => Heteroskedastizität)
+olsrr::ols_test_breusch_pagan(m4.lm)
 ```
 
 ### Einflussreiche Werte
@@ -998,12 +1065,26 @@ plot(m4.lm, 3)
 ```{r}
 plot(m4.lm, 4)
 plot(m4.lm, 5)
+
+#  Studentisierte Residuen
+# (problematisch: Werte absolut über 3 )
+olsrr::ols_plot_resid_stud(m4.lm)
+
+# DiffBeta
+# (Welche Beobachtungen haben einen großen Einfluss auf die
+# Parameterschätzung?)
+olsrr::ols_plot_dfbetas(m4.lm)
 ```
 
 ### Keine Multikollinearität
 
 ```{r}
 #vif(m1.lm)
+
+# abwesenheit von starker Multikollinearität
+
+# (Problematisch: VIF-Werte über 10.0)
+olsrr::ols_vif_tol(m4.lm)
 ```
 
 ## Simulation
