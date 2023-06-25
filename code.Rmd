@@ -25,7 +25,7 @@ pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrix
 
 here::i_am("code.Rmd")
 
-theme_set(theme_light())
+theme_set(theme_minimal())
 
 set.seed(12250912)
 
@@ -108,6 +108,11 @@ alpha_immigration
 alpha_immigration[["total"]]$raw_alpha |> 
   round(digits = 3) |> 
   write.table(file = here::here("stats", "alpha_immigration.txt"), sep = "", col.names = FALSE, row.names = FALSE)
+
+alpha_immigration[["alpha.drop"]]$raw_alpha |> 
+  max() |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_drop_immigration.txt"), sep = "", col.names = FALSE, row.names = FALSE)
 
 
 
@@ -243,6 +248,11 @@ alpha_sdtendency
 alpha_sdtendency[["total"]]$raw_alpha |> 
   round(digits = 3) |> 
   write.table(file = here::here("stats", "alpha_sdtendency.txt"), sep = "", col.names = FALSE, row.names = FALSE)
+
+alpha_sdtendency[["alpha.drop"]]$raw_alpha |> 
+  max() |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_drop_sdtendency.txt"), sep = "", col.names = FALSE, row.names = FALSE)
 
 
 ### Test
@@ -405,7 +415,10 @@ alpha_sdperception[["total"]]$raw_alpha |>
   round(digits = 3) |> 
   write.table(file = here::here("stats", "alpha_sdperception.txt"), sep = "", col.names = FALSE, row.names = FALSE)
 
-
+alpha_sdperception[["alpha.drop"]]$raw_alpha |> 
+  max() |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "alpha_drop_sdperception.txt"), sep = "", col.names = FALSE, row.names = FALSE)
 
 # Index
 
@@ -604,16 +617,53 @@ allbus2006 |>
 
 ## Variablenkonstruktion
 
-| **Bezeichnung** | **Typ**    | **Konstruktion** | **Verwendete Variablen** |
-|-----------------|------------|------------------|--------------------------|
-| immigration     | Index      | 0-7              | v43 bis v46              |
-| split           | Dummy      | 1; wenn CAPI     | v47                      |
-| sdtendeny       | Index      | 0-1              | v54 bis v63              |
-| sdperception    | Index      | 0-1              | v81 bis v92              |
-| sex             | Dummy      | 1; wenn weiblich | v174                     |
-| intervIewsex    | Dummy      | 1; wenn          | v702                     |
-| age             | Metrisch   | 18-94            | v27                      |
-| split           | Kategorial | 1 bis 4          | v47                      |
+```{r Variablenkonstruktion}
+variablenkonstruktion <- data.frame(
+  "Bezeichnung" = colnames(allbus2006 |> select(
+    immigration,
+    split,
+    split_erfolg,
+    sdtendency,
+    sdperception,
+    int_sex,
+    int_agediff,
+    int_edu,
+    int_exp,
+    age,
+    sex,
+    edu)),
+  "Verwendet" = c("v43 - v46",
+                  "v3",
+                  "v47",
+                  "v54 - v63",
+                  "v84 - v91",
+                  "v702",
+                  "v27; v703",
+                  "v705",
+                  "v706",
+                  "v27",
+                  "v174",
+                  "v175"),
+  "Typ" = c("Index", 
+            "Dummy",
+            "Kategorial",
+            "Index",
+            "Index",
+            "Dummy",
+            "Metrisch",
+            "Dummy",
+            "Metrisch",
+            "Metrisch",
+            "Dummy",
+            "Dummy")
+)
+
+variablenkonstruktion
+
+variablenkonstruktion |> 
+  write_csv(here::here("tables", "variablenkonstruktion.csv"))
+```
+
 
 ```{r labels}
 allbus2006 <- allbus2006 |> 
@@ -706,7 +756,7 @@ stipro <- allbus2006 |>
     "Keine deutsche Staatsbürgerschaft",
     "Index zu Einstellungen gegenüber Immigration missing",
     "Index zu Tendenz zu sozialer Erwünschtheit missing",
-    "Index zu Bewertung zur Erwünschtheit missing",
+    "Index zu Wahrnehmung zur Erwünschtheit missing",
     "Alter missing",
     "Bildung missing",
     "Analysesample"))
@@ -787,38 +837,231 @@ tbl_zusammenhang <- allbus2006  |>
   add_p() |> 
   gtsummary::as_tibble() |> 
   write_csv(here::here("tables", "vergleich.csv"))
+
+stats_split <- allbus2006 |> 
+  group_by(split) |> 
+  select(immigration) |> 
+  summarise(median = median(immigration),
+            mean = mean(immigration),
+            sd = sd(immigration),
+            iqr = iqr(immigration),
+            skew = skew(immigration),
+            kurtosi = kurtosi(immigration),
+            quantilest = quantile(immigration, probs = c(0.25)),
+            quantilerd = quantile(immigration, probs = c(0.75)))
+
+stats_split
+
+# median 
+
+stats_split[[1, "median"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "median_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "median"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "median_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# mean
+
+stats_split[[1, "mean"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "mean_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "mean"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "mean_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# sd
+
+stats_split[[1, "sd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sd_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "sd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sd_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# iqr
+
+stats_split[[1, "iqr"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "iqr_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "iqr"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "iqr_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# skew
+
+stats_split[[1, "skew"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "skew_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "skew"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "skew_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# kurtosis
+
+stats_split[[1, "kurtosi"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "kurtosis_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "kurtosi"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "kurtosis_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# 1st quartile
+
+stats_split[[1, "quantilest"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_first_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "quantilest"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_first_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# 3rd quartile
+
+stats_split[[1, "quantilerd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_third_casi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+stats_split[[2, "quantilerd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_third_capi.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
 ```
 
 ```{r sd test}
 psych::describeBy(allbus2006$immigration, allbus2006$split)
 
 car::leveneTest(allbus2006$immigration, allbus2006$split)
+sdtest <- car::leveneTest(allbus2006$immigration, allbus2006$split)
+
+sdtest[[1, "Df"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sdtest_no.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+sdtest[[2, "Df"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sdtest_df.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+sdtest[[1, "F value"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sdtest_f.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+sdtest[[1, "Pr(>F)"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sdtest_p.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
 ```
 
 ```{r t test}
-t.test(allbus2006$immigration ~ allbus2006$split, var.equal = TRUE, alternative = "greater")
+ttest <- t.test(allbus2006$immigration ~ allbus2006$split, var.equal = TRUE, alternative = "greater")
+
+ttest
+
+# p wert 
+
+ttest[["p.value"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "ttest_p.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# df
+
+ttest[["parameter"]][["df"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "ttest_df.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# t 
+
+ttest[["statistic"]][["t"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "ttest_t.txt"),
+              sep = "", col.names = FALSE, row.names = FALSE)
 ```
 
 ```{r cohens d}
 cohensD(allbus2006$immigration ~ allbus2006$split)
+
+cohensD(allbus2006$immigration ~ allbus2006$split) |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "cohensd.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
 ```
 
 
-```{r}
+```{r plots}
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
-  geom_boxplot() 
+  geom_boxplot() +
+  scale_y_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+  labs(
+    title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    y = "Einstellungen gegenüber Immigration",
+    caption = "Daten: ALLBUS 2006"
+  ) +
+  theme(axis.title.x=element_blank())
+
+ggplot2::ggsave(here::here("plots", "boxplot.png"))
 
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
-  geom_violin() 
+  geom_violin() +
+  scale_y_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+  labs(
+    title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    y = "Einstellungen gegenüber Immigration",
+    caption = "Quelle: ALLBUS 2006"
+  ) +
+  theme(axis.title.x=element_blank())
 
 ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
   geom_density() +
-  ggthemes::scale_color_colorblind()
+  ggthemes::scale_color_colorblind() 
 
-ggplot(data = allbus2006 |> select(immigration, split) |> drop_na(), mapping = aes(x = as.numeric(split), y = immigration)) +
-  geom_point(aes(alpha = 0.4)) +
-  geom_jitter(aes(alpha = 0.4)) +
-  geom_smooth(method = 'lm')
+ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration)) +
+  geom_point() +
+  geom_jitter() +
+  geom_smooth(method = 'lm') +
+  scale_y_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+  scale_x_continuous(breaks = c(1, 2),
+                     labels = c("CASI", "CAPI")) +
+  labs(
+    title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    y = "Einstellungen gegenüber Immigration",
+    caption = "Daten: ALLBUS 2006"
+  ) +
+  theme(axis.title.x=element_blank())
 
 ```
 
