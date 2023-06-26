@@ -21,7 +21,7 @@ if (!require("pacman")) install.packages("pacman"); library(pacman)
 pacman::p_load(devtools)
 #if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
 #if (!require("summarytools")) install.packages("summarytools"); library(summarytools)
-pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary, olsrr)
+pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary, olsrr, moments)
 
 here::i_am("code.Rmd")
 
@@ -30,6 +30,8 @@ theme_set(theme_minimal())
 set.seed(12250912)
 
 colours_colourblind <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+dpi <- c(700) # for ggsave
 ```
 
 # Datenbereinigung
@@ -121,9 +123,6 @@ alpha_immigration[["alpha.drop"]]$raw_alpha |>
 allbus2006$immigration <- rowMeans(allbus2006[,c("immigration_anpassen", "immigration_heim", "immigration_unpolit", "immigration_heirat")], na.rm = TRUE)
 
 ### Test
-
-allbus2006 <- allbus2006 |> 
-  mutate(immigration_log = log(immigration))
 
 allbus2006 |> 
   group_by(v43, immigration_anpassen) |> 
@@ -445,6 +444,7 @@ summary(allbus2006$sdperception)
 
 ```{r interviewer sex}
 # Skala
+# v702
 # 1 Männlich 
 # 2 Weiblich
 
@@ -606,7 +606,7 @@ allbus2006 <- allbus2006 |>
                     TRUE ~ NA), # bildung befragte person
     edu = factor(edu,
                  levels = c(0, 1),
-                 labels = c("ohne Hochschulreife", "mit Hochschulreife"))
+                 labels = c("ohne Abi", "Abi"))
   )
 
 allbus2006 |> 
@@ -669,7 +669,6 @@ variablenkonstruktion |>
 allbus2006 <- allbus2006 |> 
   set_variable_labels(
     immigration = "Einstellungen gegenüber Immigration",
-    immigration_log = "Logarithmierte Einstellungen gegenüber Immigration",
     split = "Split Befragungsmodus",
     sdtendency = "Tendenz zu sozialer Erwünschtheit",
     sdperception = "Bewertung der Erwünschtheit",
@@ -692,7 +691,6 @@ allbus2006 <- allbus2006 |>
 masszahlen <- allbus2006 |> 
   select(
     immigration,
-    immigration_log,
     split,
     split_erfolg,
     sdtendency,
@@ -787,7 +785,6 @@ allbus2006 |>
 allbus2006 <- allbus2006 |> 
   select(
     immigration,
-    immigration_log,
     split,
     split_erfolg,
     sdtendency,
@@ -846,7 +843,7 @@ stats_split <- allbus2006 |>
             sd = sd(immigration),
             iqr = iqr(immigration),
             skew = skew(immigration),
-            kurtosi = kurtosi(immigration),
+            kurtosis = kurtosis(immigration),
             quantilest = quantile(immigration, probs = c(0.25)),
             quantilerd = quantile(immigration, probs = c(0.75)))
 
@@ -914,12 +911,12 @@ stats_split[[2, "skew"]] |>
 
 # kurtosis
 
-stats_split[[1, "kurtosi"]] |> 
+stats_split[[1, "kurtosis"]] |> 
   round(digits = 3) |> 
   write.table(file = here::here("stats", "kurtosis_casi.txt"), 
               sep = "", col.names = FALSE, row.names = FALSE)
 
-stats_split[[2, "kurtosi"]] |> 
+stats_split[[2, "kurtosis"]] |> 
   round(digits = 3) |> 
   write.table(file = here::here("stats", "kurtosis_capi.txt"), 
               sep = "", col.names = FALSE, row.names = FALSE)
@@ -1019,15 +1016,17 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   scale_y_continuous(
     breaks = c(1:7),
     minor_breaks = seq(0.5, 6.5, 0.5),
-    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+    labels = c("negativ", 2:6, "positiv")) +
   labs(
     title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    subtitle = "N = 2635",
     y = "Einstellungen gegenüber Immigration",
     caption = "Daten: ALLBUS 2006"
   ) +
-  theme(axis.title.x=element_blank())
+  theme(axis.title.y = element_blank()) +
+  coord_flip()
 
-ggplot2::ggsave(here::here("plots", "boxplot.png"))
+ggplot2::ggsave(here::here("plots", "boxplot.pdf"), dpi = dpi, width = 7, height = 4, units = "in")
 
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_violin() +
@@ -1037,10 +1036,11 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
     labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
   labs(
     title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    subtitle = "N = 2635",
     y = "Einstellungen gegenüber Immigration",
     caption = "Quelle: ALLBUS 2006"
   ) +
-  theme(axis.title.x=element_blank())
+  theme(axis.title.x = element_blank())
 
 ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
   geom_density() +
@@ -1058,10 +1058,11 @@ ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration))
                      labels = c("CASI", "CAPI")) +
   labs(
     title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    subtitle = "N = 2635",
     y = "Einstellungen gegenüber Immigration",
     caption = "Daten: ALLBUS 2006"
   ) +
-  theme(axis.title.x=element_blank())
+  theme(axis.title.x = element_blank())
 
 ```
 
@@ -1086,9 +1087,7 @@ ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration))
 #         age_cen,
 #       ), 
 #     method = "spearman") # all independent variables
-```
 
-```{r}
 # for (a in 2:length(colnames(allbus2006))) {
 #   for (b in 3:length(colnames(allbus2006))) {
 #     cor.test(x = as.numeric(allbus2006[, a]), y = as.numeric(allbus2006[, b]), method = "spearman")
@@ -1096,19 +1095,56 @@ ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration))
 # }
 ```
 
+```{r}
+cor(allbus2006 |> 
+      select(
+        immigration, 
+        sdtendency,
+        sdperception,
+        int_age,
+        int_exp,
+        age
+      ))
+```
+
 
 
 
 ### Normalverteilung
 
-```{r}
+```{r Normalverteilung immigration}
+skewness(allbus2006$immigration)
+
+skewness(allbus2006$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "skew_immigration.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+kurtosis(allbus2006$immigration)
+
+kurtosis(allbus2006$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "kurtosis_immigration.txt"),
+              col.names = FALSE, row.names = FALSE)
+
 allbus2006 |> 
   ggplot(aes(x = immigration)) +
-  geom_histogram(bins = 13) 
-  
-allbus2006 |> 
-  ggplot(aes(x = immigration_log)) +
-  geom_histogram(bins = 13)
+  geom_histogram(bins = 13) +
+  labs(
+    title = "Histogramm der Einstellungen gegenüber Immigration",
+    subtitle = "N = 2635",
+    x = "Einstellungen gegenüber Immigration",
+    y = "Anzahl",
+    caption = "Daten: ALLBUS 2006"
+  ) +
+  scale_y_continuous(limits = c(0, 400)) +
+  scale_x_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("negativ", 2:6, "positiv")
+  )
+
+ggsave(here::here("plots", "histogram.pdf"), dpi = dpi)
 ```
 
 ## Einfache lineare Regression
@@ -1120,28 +1156,28 @@ summary(m1.lm) # casi
 
 ## Multiple lineare Regression
 
-```{r m20}
+```{r m2}
 m2.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006)
 
 summary(m2.lm)
 ```
 
 ```{r m3}
-m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
-                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006)
+m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006)
 
 summary(m3.lm)
 ```
 
 ```{r m4}
-m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
-                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + sdperception, data = allbus2006)
+m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006)
 
 summary(m4.lm)
 ```
 
+`r modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output = "markdown", statistic = 'p.value')`
+
 ```{r modelsummary}
-modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T)
+modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, statistic = "p.value", output = here::here("tables", "regression.csv"))
 
 modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output = "markdown", statistic = 'p.value')
 
@@ -1153,6 +1189,10 @@ modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output 
 #                            "t = {statistic}",
 #                            "p = {p.value}"))
 
+
+```
+
+```{r coefplot}
 modelsummary::modelplot(list(m1.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   scale_color_manual(values = c(colours_colourblind[1])) +
@@ -1190,6 +1230,7 @@ modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
 
 ```
 
+
 ## Robustheitsanalyse
 
 
@@ -1211,15 +1252,13 @@ summary(m2_nohilfe.lm)
 ```
 
 ```{r m3_nohilfe}
-m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
-                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split, data = allbus2006_nohilfe)
+m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006_nohilfe)
 
 summary(m3_nohilfe.lm)
 ```
 
 ```{r m4_nohilfe}
-m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sexdiff +
-                                     int_sexdiff * split + int_agediff + int_agediff * split + int_agecen + int_agecen * split + sdtendency + sdperception, data = allbus2006_nohilfe)
+m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006_nohilfe)
 
 summary(m4_nohilfe.lm)
 ```
@@ -1244,10 +1283,22 @@ modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_noh
 
 ## Regressionsdiagnostik
 
+```{r diagnostic}
+pdf(here::here("plots", "diagnostics.pdf"), width = 7, height = 7)
+par(mfrow = c(2, 2))
+plot(m4.lm, col = rgb(0, 0, 0, alpha = 0.3))
+dev.off()
+```
+
+
 ### Linearität
 
-```{r}
-plot(m4.lm, 1)
+```{r linearitat}
+plot(m4.lm, 1, col = rgb(0, 0, 0, alpha = 0.5))
+
+png(here::here("plots", "diag_linear.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 1, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
 
 # Paarweises Streudiagramm
 # (relevant sind nur diejenigen Streudiagramme, 
@@ -1264,14 +1315,18 @@ lmtest::raintest(m4.lm)
 
 ### Normalverteilung der Residuen
 
-```{r}
+```{r norm}
 # (Histogramm sollte möglichst nahe an der 
 # Normalverteilung liegen,
 # vor allem an den beiden Außenrändern der Verteilung)
 olsrr::ols_plot_resid_hist(m4.lm)
 
 # QQ Plot
-plot(m4.lm, 2)
+plot(m4.lm, 2, col = rgb(0, 0, 0, alpha = 0.5))
+
+png(here::here("plots", "diag_norm.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 2, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
 
 
 # Shapiro-Wilk-Test auf Normalverteilung
@@ -1280,9 +1335,17 @@ shapiro.test(m4.lm$residuals)
 
 # Schiefe und Kurtosis (mit moments-Package)
 #(Bei Normalverteilung skewness nahe 0 und kurtosis nahe 3)
-
 moments::skewness(m4.lm$residuals)
+moments::skewness(m4.lm$residuals) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "residual_skew.txt"),
+              col.names = FALSE, row.names = FALSE)
+
 moments::kurtosis(m4.lm$residuals)
+moments::kurtosis(m4.lm$residuals) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "residual_kurtosis.txt"),
+              col.names = FALSE, row.names = FALSE)
 
 # Signifikanztests für Schiefe und Kurtosis 
 #(mit moments-Package)
@@ -1295,8 +1358,12 @@ moments::anscombe.test(m4.lm$residuals)
 ### Homoskedaszität
 
 ```{r}
+plot(m4.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+
 # graphisch
-plot(m4.lm, 3)
+png(here::here("plots", "diag_location.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
 
 # Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
 # (signifikant => Heteroskedastizität)
@@ -1306,8 +1373,19 @@ olsrr::ols_test_breusch_pagan(m4.lm)
 ### Einflussreiche Werte
 
 ```{r}
-plot(m4.lm, 4)
-plot(m4.lm, 5)
+plot(m4.lm, 4, col = rgb(0, 0, 0, alpha = 0.5))
+
+
+png(here::here("plots", "diag_student.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 4, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+plot(m4.lm, 5, col = rgb(0, 0, 0, alpha = 0.5))
+
+
+png(here::here("plots", "diag_leverage.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 5, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
 
 #  Studentisierte Residuen
 # (problematisch: Werte absolut über 3 )
