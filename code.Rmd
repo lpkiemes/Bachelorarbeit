@@ -1170,13 +1170,13 @@ summary(m2.lm)
 ```
 
 ```{r m3}
-m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006)
+m3.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006)
 
 summary(m3.lm)
 ```
 
 ```{r m4}
-m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006)
+m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006)
 
 summary(m4.lm)
 ```
@@ -1237,13 +1237,13 @@ summary(m2_nohilfe.lm)
 ```
 
 ```{r m3_nohilfe}
-m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006_nohilfe)
+m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006_nohilfe)
 
 summary(m3_nohilfe.lm)
 ```
 
 ```{r m4_nohilfe}
-m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006_nohilfe)
+m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006_nohilfe)
 
 summary(m4_nohilfe.lm)
 ```
@@ -1254,8 +1254,6 @@ summary(m4_nohilfe.lm)
 modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), stars = T, statistic = "p.value")
 
 modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),stars = T, output = "markdown", statistic = 'p.value')
-
-
 
 ```
 
