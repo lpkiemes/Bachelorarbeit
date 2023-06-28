@@ -507,8 +507,8 @@ allbus2006 <- allbus2006 |>
                                 TRUE ~ NA),
     int_edu = factor(int_edu,
                              levels = c(0, 1), 
-                             labels = c("ohne Abi",
-                                        "Abi"))
+                             labels = c("ohne Abitur",
+                                        "Abitur"))
     )
 
 allbus2006 |> 
@@ -606,7 +606,7 @@ allbus2006 <- allbus2006 |>
                     TRUE ~ NA), # bildung befragte person
     edu = factor(edu,
                  levels = c(0, 1),
-                 labels = c("ohne Abi", "Abi"))
+                 labels = c("ohne Abitur", "Abitur"))
   )
 
 allbus2006 |> 
@@ -670,6 +670,7 @@ allbus2006 <- allbus2006 |>
   set_variable_labels(
     immigration = "Einstellungen gegenüber Immigration",
     split = "Split Befragungsmodus",
+    split_erfolg = "Erfolg des Splits",
     sdtendency = "Tendenz zu sozialer Erwünschtheit",
     sdperception = "Bewertung der Erwünschtheit",
     int_sexdiff = "Anderes Geschlecht Interviewer/-in und Interviewee",
@@ -815,7 +816,13 @@ write_csv(allbus2006, here::here("data", "allbus2006.csv")) # save as csv
 ## Univariate Deskription
 
 ```{r}
-tbl_summary(allbus2006)
+allbus2006 |> 
+  tbl_summary()
+
+allbus2006  |> 
+  tbl_summary()  |> 
+  gtsummary::as_tibble() |> 
+  write_csv(here::here("tables", "summary.csv"))
 ```
 
 
@@ -1026,7 +1033,7 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   theme(axis.title.y = element_blank()) +
   coord_flip()
 
-ggplot2::ggsave(here::here("plots", "boxplot.pdf"), dpi = dpi, width = 7, height = 4, units = "in")
+ggplot2::ggsave(here::here("plots", "boxplot.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
 
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_violin() +
@@ -1193,40 +1200,18 @@ modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output 
 ```
 
 ```{r coefplot}
-modelsummary::modelplot(list(m1.lm),
-                        background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
-  scale_color_manual(values = c(colours_colourblind[1])) +
-  ggtitle("Koeffizientenplot") +
-  labs(
-    colour = "Schätzer"
-  )
-
-modelsummary::modelplot(list(m1.lm, m2.lm),
-                        background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
-  aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1:2])) +
-  ggtitle("Koeffizientenplot") +
-  labs(
-    colour = "Schätzer"
-  )
-
-modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm),
-                        background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
-  aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4])) +
-  ggtitle("Koeffizientenplot") +
-  labs(
-    colour = "Schätzer"
-  )
-
 modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
   scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
-  ggtitle("Koeffizientenplot") +
+  ggtitle("Koeffizientenplot zu Einstellungen gegenüber Immigration") +
   labs(
-    colour = "Schätzer"
+    colour = "Modell",
+    caption = "Daten: ALLBUS 2006",
+    subtitle = "Vergleich zwischen CAPI und CASI"
   )
+
+ggplot2::ggsave(here::here("plots", "coefplot.pdf"), dpi = dpi, width = 7, height = 6)
 
 ```
 
@@ -1263,22 +1248,32 @@ m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu 
 summary(m4_nohilfe.lm)
 ```
 
+` r modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), stars = T, statistic = "p.value", output = "markdown)`
+
 ```{r modelsummary_nohilfe}
-modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T)
+modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), stars = T, statistic = "p.value")
 
-modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),  stars = T, output = "markdown", statistic = 'p.value')
+modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),stars = T, output = "markdown", statistic = 'p.value')
 
 
+
+```
+
+```{r coefplot robust}
 modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
   scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
-  ggtitle("Koeffizientenplot") +
+  ggtitle("Koeffizientenplot zu Einstellungen gegenüber Immigration") +
   labs(
-    colour = "Schätzer"
+    colour = "Modell",
+    caption = "Daten: ALLBUS 2006",
+    subtitle = "Vergleich zwischen CAPI und erfolgreichem CASI"
   )
 
+ggplot2::ggsave(here::here("plots", "coefplot_robust.pdf"), dpi = dpi, height = 6, width = 7)
 ```
+
 
 
 ## Regressionsdiagnostik
@@ -1400,12 +1395,18 @@ olsrr::ols_plot_dfbetas(m4.lm)
 ### Keine Multikollinearität
 
 ```{r}
-#vif(m1.lm)
+vif(m4.lm)
 
 # abwesenheit von starker Multikollinearität
 
 # (Problematisch: VIF-Werte über 10.0)
 olsrr::ols_vif_tol(m4.lm)
+
+# für Robustheitsanalyse
+
+vif(m4_nohilfe.lm)
+
+olsrr::ols_vif_tol(m4_nohilfe.lm)
 ```
 
 ## Simulation
