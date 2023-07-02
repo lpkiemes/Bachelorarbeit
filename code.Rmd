@@ -1690,6 +1690,7 @@ df %>%
 
 ggplot2::ggsave(here::here("plots", "robust_int_exp_med.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
 
+quantile(allbus2006$int_exp)
 ```
 
 #### Personeneffekte

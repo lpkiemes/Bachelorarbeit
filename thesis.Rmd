@@ -1,0 +1,84 @@
+---
+title: " "
+output:
+  pdf_document:
+    number_sections: TRUE
+  html_document:
+    toc: yes
+    toc_depth: 2
+    number_sections: yes
+    toc_float:
+      collapsed: no
+geometry: "left = 2.5cm, right = 2cm, top = 2cm, bottom = 2cm"
+fontsize: 11pt
+header-includes:
+  - \usepackage{graphicx}
+  - \usepackage{alltt}
+  - \usepackage{color}
+  - \usepackage[utf8]{inputenc}
+  - \usepackage{geometry}
+  - \usepackage{ragged2e}
+  - \usepackage{xcolor}
+  - \usepackage{fancyhdr}
+  - \usepackage{hyperref}
+  - \usepackage{float}
+  - \usepackage{sectsty}
+  - \usepackage{paralist}
+  - \usepackage{setspace}\spacing{1.5}
+  - \usepackage{fancyhdr}
+  - \usepackage{lastpage}
+  - \usepackage{dcolumn}
+  - \usepackage{natbib}\bibliographystyle{agsm}
+  - \usepackage[nottoc, numbib]{tocbibind}
+bibliography: Bachelorarbeit.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newcommand{\myname}{Jane Doe}
+
+\begin{titlepage}
+\begin{center}
+    
+\LARGE
+Master's Thesis
+    
+\vspace{0.5cm}
+      
+\rule{\textwidth}{1.5pt}
+\LARGE
+\textbf{\mytitle}
+\rule{\textwidth}{1.5pt}
+   
+\vspace{0.5cm}
+      
+\large
+Department of Statistics \\
+Ludwig-Maximilians-Universität München 
+
+\vfill
+
+\Large
+\textbf{\myname}
+
+\vfill
+
+\large
+Munich, Month Day\textsuperscript{th}, Year
+      
+\vfill
+
+\includegraphics[width = 0.4\textwidth]{sigillum.png}
+
+\vfill
+
+\normalsize
+Submitted in partial fulfillment of the requirements for the degree of M. Sc.
+\\
+
+Supervised by \mysupervisor
+
+\end{center}
+\end{titlepage}

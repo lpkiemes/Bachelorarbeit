@@ -1,0 +1,13 @@
+Bezeichnung,Verwendet,Typ
+immigration,v43 - v46,Index
+split,v3,Dummy
+split_erfolg,v47,Kategorial
+sdtendency,v54 - v63,Index
+sdperception,v84 - v91,Index
+int_sex,v702,Dummy
+int_agediff,v27; v703,Metrisch
+int_edu,v705,Dummy
+int_exp,v706,Metrisch
+age,v27,Metrisch
+sex,v174,Dummy
+edu,v175,Dummy
