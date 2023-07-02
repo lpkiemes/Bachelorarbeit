@@ -30,6 +30,7 @@ theme_set(theme_minimal())
 set.seed(12250912)
 
 colours_colourblind <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+names(colours_colourblind) <- c("blindblack", "blindorange", "blindlightblue", "blindgreen", "blindyellow", "blindblue", "blinddarkorange", "blindpurple")
 
 dpi <- c(700) # for ggsave
 ```
@@ -402,6 +403,8 @@ allbus2006 |>
   group_by(v91, bewertung_ehe) |> 
   summarise(n())
 
+
+
 ### Cronbachs alpha
 
 alpha_sdperception <- allbus2006 |> 
@@ -435,6 +438,13 @@ allbus2006 <- allbus2006 |>
 
 
 summary(allbus2006$sdperception)
+
+# missings untersuchen
+allbus2006 |> 
+  filter(v43 != 0, is.na(sdperception)) |> 
+  select(bewertung_nielebensstil, bewertung_lebensstil, bewertung_niearbeit, 
+         bewertung_arbeit, bewertung_niepolitik, bewertung_politik, 
+         bewertung_nieehe, bewertung_ehe)
 ```
 
 
@@ -519,7 +529,7 @@ allbus2006 |>
   select(v705, int_edu)
 ```
 
-### Erfahrung
+#### Erfahrung
 
 ```{r interviewer exp}
 ### v706
@@ -527,7 +537,7 @@ allbus2006 |>
 
 allbus2006 <- allbus2006 |> 
   mutate(
-    int_exp = v706
+    int_exp = as.numeric(v706)
   )
 
 allbus2006 |> 
@@ -547,8 +557,8 @@ allbus2006 |>
 allbus2006 <- allbus2006 |> 
   mutate(
     
-    age = case_when(v27 == 999 ~ NA,
-                      TRUE ~ v27),
+    age = as.numeric(case_when(v27 == 999 ~ NA,
+                      TRUE ~ v27)),
     age_cen = age - mean(age, na.rm = TRUE)
   )
 
@@ -823,6 +833,77 @@ allbus2006  |>
   tbl_summary()  |> 
   gtsummary::as_tibble() |> 
   write_csv(here::here("tables", "summary.csv"))
+
+stats <- allbus2006 |> 
+  select(immigration) |> 
+  summarise(min = min(immigration),
+            max = max(immigration),
+            median = median(immigration),
+            mean = mean(immigration),
+            sd = sd(immigration),
+            iqr = iqr(immigration),
+            skew = skew(immigration),
+            kurtosis = kurtosis(immigration),
+            quantilest = quantile(immigration, probs = c(0.25)),
+            quantilerd = quantile(immigration, probs = c(0.75)))
+
+stats
+
+# median 
+
+stats[[1, "median"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "median.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# mean
+
+stats[[1, "mean"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "mean.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# sd
+
+stats[[1, "sd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "sd.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# iqr
+
+stats[[1, "iqr"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "iqr.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# skew
+
+stats[[1, "skew"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "skew.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# kurtosis
+
+stats[[1, "kurtosis"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "kurtosis.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# 1st quartile
+
+stats[[1, "quantilest"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_first.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
+
+# 3rd quartile
+
+stats[[1, "quantilerd"]] |> 
+  round(digits = 3) |> 
+  write.table(file = here::here("stats", "quartile_third.txt"), 
+              sep = "", col.names = FALSE, row.names = FALSE)
 ```
 
 
@@ -1017,7 +1098,8 @@ cohensD(allbus2006$immigration ~ allbus2006$split) |>
 ```
 
 
-```{r plots}
+
+```{r boxplot}
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_boxplot() +
   scale_y_continuous(
@@ -1034,34 +1116,63 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   coord_flip()
 
 ggplot2::ggsave(here::here("plots", "boxplot.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
+```
 
+
+```{r violin plot}
 ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   geom_violin() +
   scale_y_continuous(
     breaks = c(1:7),
     minor_breaks = seq(0.5, 6.5, 0.5),
-    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+    labels = c("negativ", 2:6, "positiv")) +
   labs(
     title = "Einstellung gegenüber Immigration nach Befragungsmodus",
     subtitle = "N = 2635",
     y = "Einstellungen gegenüber Immigration",
     caption = "Quelle: ALLBUS 2006"
   ) +
-  theme(axis.title.x = element_blank())
+  theme(axis.title.y = element_blank()) +
+  coord_flip() +
+  geom_boxplot(width = 0.1)
+
+ggplot2::ggsave(here::here("plots", "violin.pdf"), dpi = dpi)
+
+```
+
+```{r density plot}
 
 ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
-  geom_density() +
-  ggthemes::scale_color_colorblind() 
+  geom_density(size = 1) +
+  scale_color_manual(values = c(colours_colourblind[[7]], colours_colourblind[[6]])) +
+  scale_x_continuous(breaks = c(1:7),
+                     labels = c("negativ", 2:6, "positiv")) +
+  scale_y_continuous(limits = c(0, 0.3)) +
+  labs(
+    title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    subtitle = "N = 2635",
+    x = "Einstellung gegenüber Immigration",
+    color = "Befragungsmodus",
+    y = "Dichte",
+    caption = "Daten: ALLBUS 2006"
+  )
 
+ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi)
+
+```
+
+
+
+```{r scatter}
 ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration)) +
-  geom_point() +
-  geom_jitter() +
-  geom_smooth(method = 'lm') +
+  geom_point(alpha = 0.5, position = position_jitter(height = 0.05)) +
+  geom_smooth(method = 'lm', size = 2, color = colours_colourblind[[6]]) +
   scale_y_continuous(
     breaks = c(1:7),
     minor_breaks = seq(0.5, 6.5, 0.5),
-    labels = c("ausländerfeindlich - 1", 2:6, "ausländerfreundlich - 7")) +
+    labels = c("negativ - 1", 2:6, "positiv - 7")) +
   scale_x_continuous(breaks = c(1, 2),
+                     minor_breaks = NULL,
                      labels = c("CASI", "CAPI")) +
   labs(
     title = "Einstellung gegenüber Immigration nach Befragungsmodus",
@@ -1071,88 +1182,14 @@ ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration))
   ) +
   theme(axis.title.x = element_blank())
 
+ggplot2::ggsave(here::here("plots", "scatter.pdf"), dpi = dpi)
 ```
+
 
 # Lineare Regression
 
 
-## Voraussetzungen 
 
-### Unabhängigkeit
-
-```{r}
-# cor.test(allbus2006 |> 
-#       select(
-#         immigration,
-#         sdtendency,
-#         sdperception,
-#         int_age,
-#         int_agecen,
-#         int_agediff,
-#         int_exp,
-#         age,
-#         age_cen,
-#       ), 
-#     method = "spearman") # all independent variables
-
-# for (a in 2:length(colnames(allbus2006))) {
-#   for (b in 3:length(colnames(allbus2006))) {
-#     cor.test(x = as.numeric(allbus2006[, a]), y = as.numeric(allbus2006[, b]), method = "spearman")
-#   }
-# }
-```
-
-```{r}
-cor(allbus2006 |> 
-      select(
-        immigration, 
-        sdtendency,
-        sdperception,
-        int_age,
-        int_exp,
-        age
-      ))
-```
-
-
-
-
-### Normalverteilung
-
-```{r Normalverteilung immigration}
-skewness(allbus2006$immigration)
-
-skewness(allbus2006$immigration) |> 
-  round(digits = 3) |> 
-  write.table(here::here("stats", "skew_immigration.txt"),
-              col.names = FALSE, row.names = FALSE)
-
-kurtosis(allbus2006$immigration)
-
-kurtosis(allbus2006$immigration) |> 
-  round(digits = 3) |> 
-  write.table(here::here("stats", "kurtosis_immigration.txt"),
-              col.names = FALSE, row.names = FALSE)
-
-allbus2006 |> 
-  ggplot(aes(x = immigration)) +
-  geom_histogram(bins = 13) +
-  labs(
-    title = "Histogramm der Einstellungen gegenüber Immigration",
-    subtitle = "N = 2635",
-    x = "Einstellungen gegenüber Immigration",
-    y = "Anzahl",
-    caption = "Daten: ALLBUS 2006"
-  ) +
-  scale_y_continuous(limits = c(0, 400)) +
-  scale_x_continuous(
-    breaks = c(1:7),
-    minor_breaks = seq(0.5, 6.5, 0.5),
-    labels = c("negativ", 2:6, "positiv")
-  )
-
-ggsave(here::here("plots", "histogram.pdf"), dpi = dpi)
-```
 
 ## Einfache lineare Regression
 
@@ -1203,7 +1240,7 @@ modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output 
 modelsummary::modelplot(list(m1.lm, m2.lm, m3.lm, m4.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
+  scale_color_manual(values = c(colours_colourblind[[1]], colours_colourblind[[2]], colours_colourblind[[4]], colours_colourblind[[7]])) +
   ggtitle("Koeffizientenplot zu Einstellungen gegenüber Immigration") +
   labs(
     colour = "Modell",
@@ -1215,35 +1252,251 @@ ggplot2::ggsave(here::here("plots", "coefplot.pdf"), dpi = dpi, width = 7, heigh
 
 ```
 
+## Inverse Interaktion
+
+### Interviewereffekte
+
+#### Geschlecht
+
+```{r}
+df <- allbus2006
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(int_sex))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_sex, group = int_sex)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Interviewer*in Altersdifferenz
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
+    quantile_group = cut(
+      int_agediff, 
+      breaks = quantile(int_agediff, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_agediff)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Bildung
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(int_edu))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_edu, group = int_edu)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Erfahrung
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(int_exp < median(int_exp), "Below Median int_exp", "Above Median int_exp"),
+    quantile_group = cut(
+      int_exp, 
+      breaks = quantile(int_exp, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_exp)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+### Personeneffekte
+
+#### Alter
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
+    quantile_group = cut(
+      age, 
+      breaks = quantile(age, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = age)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Geschlecht
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(sex))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = sex, group = sex)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Bildung
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(edu))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = edu, group = edu)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
 
 ## Robustheitsanalyse
 
 
 ```{r nohilfe subset}
-allbus2006_nohilfe <- allbus2006 |> 
+allbus2006_robust <- allbus2006 |> 
   filter(split_erfolg == "ja, ohne Hilfe" | split_erfolg == "CAPI")
 ```
 
 ```{r m1_nohilfe}
-m1_nohilfe.lm <- lm(immigration ~ split, data = allbus2006_nohilfe)
+m1_nohilfe.lm <- lm(immigration ~ split, data = allbus2006_robust)
 
 summary(m1_nohilfe.lm)
 ```
 
 ```{r m2_nohilfe}
-m2_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006_nohilfe)
+m2_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split, data = allbus2006_robust)
 
 summary(m2_nohilfe.lm)
 ```
 
 ```{r m3_nohilfe}
-m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006_nohilfe)
+m3_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split, data = allbus2006_robust)
 
 summary(m3_nohilfe.lm)
 ```
 
 ```{r m4_nohilfe}
-m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006_nohilfe)
+m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split + sex + sex * split + int_sex + int_sex * split + int_agediff + int_agediff * split + int_exp + int_exp * split + int_edu + int_edu * split + sdtendency + sdperception, data = allbus2006_robust)
 
 summary(m4_nohilfe.lm)
 ```
@@ -1261,7 +1514,7 @@ modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_
 modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm),
                         background = list(geom_vline(xintercept = 0, color = "darkgrey"))) + 
   aes(color = estimate) +
-  scale_color_manual(values = c(colours_colourblind[1:2], colours_colourblind[4], colours_colourblind[7])) +
+  scale_color_manual(values = c(colours_colourblind[[1]], colours_colourblind[[2]], colours_colourblind[[4]], colours_colourblind[[7]])) +
   ggtitle("Koeffizientenplot zu Einstellungen gegenüber Immigration") +
   labs(
     colour = "Modell",
@@ -1272,6 +1525,222 @@ modelsummary::modelplot(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_noh
 ggplot2::ggsave(here::here("plots", "coefplot_robust.pdf"), dpi = dpi, height = 6, width = 7)
 ```
 
+### Inverse Interaktion
+
+#### Interviewereffekte
+
+##### Geschlecht
+
+```{r}
+df <- allbus2006_robust
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(int_sex))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_sex, group = int_sex)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+##### Interviewer*in Altersdifferenz
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
+    quantile_group = cut(
+      int_agediff, 
+      breaks = quantile(int_agediff, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_agediff)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+##### Bildung
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(int_edu))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_edu, group = int_edu)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+##### Erfahrung
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(int_exp < median(int_exp), "Below Median int_exp", "Above Median int_exp"),
+    quantile_group = cut(
+      int_exp, 
+      breaks = quantile(int_exp, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = int_exp)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+#### Personeneffekte
+
+##### Alter
+
+```{r}
+df <- allbus2006 %>%
+  mutate(
+    below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
+    quantile_group = cut(
+      age, 
+      breaks = quantile(age, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      labels = c("Q1", "Q2", "Q3", "Q4")
+    )
+  )
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = age)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+##### Geschlecht
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(sex))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = sex, group = sex)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
+
+##### Bildung
+
+```{r}
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = as.numeric(edu))) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  geom_smooth(method = "glm", se = FALSE) +
+  theme_classic()
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, col = edu, group = edu)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(subtitle = "Main effect in blue") +
+  theme_classic()
+
+```
 
 
 ## Regressionsdiagnostik
@@ -1281,8 +1750,89 @@ pdf(here::here("plots", "diagnostics.pdf"), width = 7, height = 7)
 par(mfrow = c(2, 2))
 plot(m4.lm, col = rgb(0, 0, 0, alpha = 0.3))
 dev.off()
+
+# Für Robustheitsanalyse
+
+pdf(here::here("plots", "diagnostics_robust.pdf"), width = 7, height = 7)
+par(mfrow = c(2, 2))
+plot(m4_nohilfe.lm, col = rgb(0, 0, 0, alpha = 0.3))
+dev.off()
 ```
 
+
+### Normalverteilung Zielvariable
+
+```{r Normalverteilung immigration}
+skewness(allbus2006$immigration)
+
+skewness(allbus2006$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "skew_immigration.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+kurtosis(allbus2006$immigration)
+
+kurtosis(allbus2006$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "kurtosis_immigration.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+allbus2006 |> 
+  ggplot(aes(x = immigration)) +
+  geom_histogram(bins = 13) +
+  labs(
+    title = "Histogramm der Einstellungen gegenüber Immigration",
+    subtitle = "N = 2635",
+    x = "Einstellungen gegenüber Immigration",
+    y = "Anzahl",
+    caption = "Daten: ALLBUS 2006"
+  ) +
+  scale_y_continuous(limits = c(0, 400)) +
+  scale_x_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("negativ", 2:6, "positiv")
+  )
+
+ggsave(here::here("plots", "histogram.pdf"), dpi = dpi)
+```
+
+
+```{r Normalverteilung immigration robust}
+skewness(allbus2006_robust$immigration)
+
+skewness(allbus2006_robust$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "skew_immigration_robust.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+kurtosis(allbus2006_robust$immigration)
+
+kurtosis(allbus2006_robust$immigration) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "kurtosis_immigration_robust.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+allbus2006_robust |> 
+  ggplot(aes(x = immigration)) +
+  geom_histogram(bins = 13) +
+  labs(
+    title = "Histogramm der Einstellungen gegenüber Immigration 
+    für CAPI-Befragte und erfolgreiche CASI-Befragte",
+    subtitle = "N = 2104",
+    x = "Einstellungen gegenüber Immigration",
+    y = "Anzahl",
+    caption = "Daten: ALLBUS 2006"
+  ) +
+  scale_y_continuous(limits = c(0, 350)) +
+  scale_x_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("negativ", 2:6, "positiv")
+  )
+
+ggsave(here::here("plots", "histogram_robust.pdf"), dpi = dpi)
+```
 
 ### Linearität
 
@@ -1293,16 +1843,17 @@ png(here::here("plots", "diag_linear.png"), res = 200, units = "in", width = 7, 
 plot(m4.lm, 1, col = rgb(0, 0, 0, alpha = 0.5))
 dev.off()
 
-# Paarweises Streudiagramm
-# (relevant sind nur diejenigen Streudiagramme, 
-# die die Kriteriumsvariable mit einschließen)
-pairs(allbus2006 |> select(
-  immigration, split, age_cen, edu, sex, int_sexdiff, int_agediff, int_agecen, sdtendency, sdperception
-), pch = 19, lower.panel = NULL)
-
 #Rainbow-Test (mit lmtest-Package) auf Linearität
 # (signifikant => Verletzung der Linearität)
 lmtest::raintest(m4.lm)
+
+# Für Robustheitsanalyse
+
+plot(m4_nohilfe.lm, 1, col = rgb(0, 0, 0, alpha = 0.5))
+
+png(here::here("plots", "diag_linear_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 1, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
 ```
 
 
@@ -1345,6 +1896,45 @@ moments::kurtosis(m4.lm$residuals) |>
 #(signifikant = Residuen nicht normalverteilt)
 moments::agostino.test(m4.lm$residuals)
 moments::anscombe.test(m4.lm$residuals)
+
+### Für Robustheitsanalyse
+
+# (Histogramm sollte möglichst nahe an der 
+# Normalverteilung liegen,
+# vor allem an den beiden Außenrändern der Verteilung)
+olsrr::ols_plot_resid_hist(m4_nohilfe.lm)
+
+# QQ Plot
+plot(m4_nohilfe.lm, 2, col = rgb(0, 0, 0, alpha = 0.5))
+
+png(here::here("plots", "diag_norm_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4_nohilfe.lm, 2, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+
+# Shapiro-Wilk-Test auf Normalverteilung
+# (signifikant => Residuen nicht normalverteilt)
+shapiro.test(m4_nohilfe.lm$residuals)
+
+# Schiefe und Kurtosis (mit moments-Package)
+#(Bei Normalverteilung skewness nahe 0 und kurtosis nahe 3)
+moments::skewness(m4_nohilfe.lm$residuals)
+moments::skewness(m4_nohilfe.lm$residuals) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "residual_skew_robust.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+moments::kurtosis(m4_nohilfe.lm$residuals)
+moments::kurtosis(m4_nohilfe.lm$residuals) |> 
+  round(digits = 3) |> 
+  write.table(here::here("stats", "residual_kurtosis_robust.txt"),
+              col.names = FALSE, row.names = FALSE)
+
+# Signifikanztests für Schiefe und Kurtosis 
+#(mit moments-Package)
+#(signifikant = Residuen nicht normalverteilt)
+moments::agostino.test(m4_nohilfe.lm$residuals)
+moments::anscombe.test(m4_nohilfe.lm$residuals)
 ```
 
 
@@ -1361,6 +1951,41 @@ dev.off()
 # Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
 # (signifikant => Heteroskedastizität)
 olsrr::ols_test_breusch_pagan(m4.lm)
+
+plot(m4.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+
+# graphisch
+png(here::here("plots", "diag_location.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+# Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
+# (signifikant => Heteroskedastizität)
+olsrr::ols_test_breusch_pagan(m4.lm)
+
+### Für Robustheitsanalyse
+
+plot(m4_nohilfe.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+
+# graphisch
+png(here::here("plots", "diag_location_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4_nohilfe.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+# Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
+# (signifikant => Heteroskedastizität)
+olsrr::ols_test_breusch_pagan(m4_nohilfe.lm)
+
+plot(m4_nohilfe.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+
+# graphisch
+png(here::here("plots", "diag_location_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4_nohilfe.lm, 3, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+# Breusch Pagan Test - Signifikanztest auf Heteroskedastizität
+# (signifikant => Heteroskedastizität)
+olsrr::ols_test_breusch_pagan(m4_nohilfe.lm)
 ```
 
 ### Einflussreiche Werte
@@ -1388,6 +2013,31 @@ olsrr::ols_plot_resid_stud(m4.lm)
 # (Welche Beobachtungen haben einen großen Einfluss auf die
 # Parameterschätzung?)
 olsrr::ols_plot_dfbetas(m4.lm)
+
+### Für Robustheitsanalyse
+
+plot(m4_nohilfe.lm, 4, col = rgb(0, 0, 0, alpha = 0.5))
+
+
+png(here::here("plots", "diag_student_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4_nohilfe.lm, 4, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+plot(m4_nohilfe.lm, 5, col = rgb(0, 0, 0, alpha = 0.5))
+
+
+png(here::here("plots", "diag_leverage_robust.png"), res = 200, units = "in", width = 7, height = 5)
+plot(m4_nohilfe.lm, 5, col = rgb(0, 0, 0, alpha = 0.5))
+dev.off()
+
+#  Studentisierte Residuen
+# (problematisch: Werte absolut über 3 )
+olsrr::ols_plot_resid_stud(m4_nohilfe.lm)
+
+# DiffBeta
+# (Welche Beobachtungen haben einen großen Einfluss auf die
+# Parameterschätzung?)
+olsrr::ols_plot_dfbetas(m4_nohilfe.lm)
 ```
 
 ### Keine Multikollinearität
@@ -1400,7 +2050,7 @@ vif(m4.lm)
 # (Problematisch: VIF-Werte über 10.0)
 olsrr::ols_vif_tol(m4.lm)
 
-# für Robustheitsanalyse
+### für Robustheitsanalyse
 
 vif(m4_nohilfe.lm)
 
