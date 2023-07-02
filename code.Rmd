@@ -1134,7 +1134,7 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   ) +
   theme(axis.title.y = element_blank()) +
   coord_flip() +
-  geom_boxplot(width = 0.1)
+  geom_boxplot(width = 0.15)
 
 ggplot2::ggsave(here::here("plots", "violin.pdf"), dpi = dpi)
 
@@ -1155,7 +1155,7 @@ ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
     color = "Befragungsmodus",
     y = "Dichte",
     caption = "Daten: ALLBUS 2006"
-  )
+  ) 
 
 ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi)
 
@@ -1165,7 +1165,7 @@ ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi)
 
 ```{r scatter}
 ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration)) +
-  geom_point(alpha = 0.5, position = position_jitter(height = 0.05)) +
+  geom_point(alpha = 0.4, position = position_jitter(height = 0.05)) +
   geom_smooth(method = 'lm', size = 2, color = colours_colourblind[[6]]) +
   scale_y_continuous(
     breaks = c(1:7),
@@ -1288,6 +1288,7 @@ df <- allbus2006 %>%
   mutate(
     below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
     quantile_group = cut(
+      include.lowest = TRUE,
       int_agediff, 
       breaks = quantile(int_agediff, probs = c(0, 0.25, 0.5, 0.75, 1)), 
       labels = c("Q1", "Q2", "Q3", "Q4")
@@ -1350,6 +1351,7 @@ df <- allbus2006 %>%
   mutate(
     below_median = ifelse(int_exp < median(int_exp), "Below Median int_exp", "Above Median int_exp"),
     quantile_group = cut(
+      include.lowest = TRUE,
       int_exp, 
       breaks = quantile(int_exp, probs = c(0, 0.25, 0.5, 0.75, 1)), 
       labels = c("Q1", "Q2", "Q3", "Q4")
@@ -1542,16 +1544,20 @@ df %>%
   theme_classic()
 
 df %>% 
-  ggplot(aes(x = split, y = immigration, col = int_sex, group = int_sex)) +
+  ggplot(aes(x = split, y = immigration, col = int_sex, group = int_sex, linetype = int_sex)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
+    color = colours_colourblind["blindblue"],
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  scale_color_manual(values = c(colours_colourblind[[4]], colours_colourblind[[2]])) +
+  scale_linetype_manual(values = c("dashed", "dotdash")) 
 
+
+ggplot2::ggsave(here::here("plots", "robust_int_sex.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
 ```
 
 ##### Interviewer*in Altersdifferenz
@@ -1561,6 +1567,7 @@ df <- allbus2006 %>%
   mutate(
     below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
     quantile_group = cut(
+      include.lowest = TRUE,
       int_agediff, 
       breaks = quantile(int_agediff, probs = c(0, 0.25, 0.5, 0.75, 1)), 
       labels = c("Q1", "Q2", "Q3", "Q4")
@@ -1621,10 +1628,11 @@ df %>%
 ```{r}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(int_exp < median(int_exp), "Below Median int_exp", "Above Median int_exp"),
-    quantile_group = cut(
+    below_median = ifelse(int_exp < median(int_exp), "Unter Median int_exp", "Über Median int_exp"),
+    Quartile = cut(
       int_exp, 
       breaks = quantile(int_exp, probs = c(0, 0.25, 0.5, 0.75, 1)), 
+      include.lowest = TRUE,
       labels = c("Q1", "Q2", "Q3", "Q4")
     )
   )
@@ -1637,21 +1645,50 @@ df %>%
   theme_classic()
 
 df %>% 
-  ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
-  # geom_jitter() +
-  geom_smooth(method = "glm", se = FALSE) +
-  theme_classic()
-
-df %>% 
-  ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
+  ggplot(aes(x = split, y = immigration, col = Quartile, group = Quartile, linetype = Quartile)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
+    color = colours_colourblind["blindblue"],
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  scale_color_manual(values = c(colours_colourblind[[2]], colours_colourblind[[3]], colours_colourblind[[4]], colours_colourblind[[7]])) +
+  scale_linetype_manual(values = c("dashed", "dotdash", "twodash", "dotted")) +
+  labs(
+    title = "Der Effekt des Befragungsmodus auf geäußerte Einstellungen 
+    gegenüber Immigration nach Quartilen der Interviewendenerfahrung",
+    subtitle = "Haupteffekt in Dunkelblau",
+    caption = "Daten: ALLBUS 2006",
+    y = "Einstellungen gegenüber Immigration"
+    )  +
+  theme(axis.title.x = element_blank())
+
+ggplot2::ggsave(here::here("plots", "robust_int_exp_quartile.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
+
+
+df %>% 
+  ggplot(aes(x = split, y = immigration, 
+             col = below_median, group = below_median, linetype = below_median)) +
+  # geom_jitter() +
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(
+    color = colours_colourblind["blindblue"],
+    method = "glm", se = FALSE,
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+  ) +
+  labs(
+    title = "Der Effekt des Befragungsmodus auf geäußerte Einstellungen 
+    gegenüber Immigration nach Quantilen der Interviewendenerfahrung",
+    subtitle = "Haupteffekt in Dunkelblau",
+    caption = "Daten: ALLBUS 2006",
+    y = "Einstellungen gegenüber Immigration"
+    ) +
+  scale_color_manual(values = c(colours_colourblind[[4]], colours_colourblind[[2]])) +
+  scale_linetype_manual(values = c("dashed", "dotdash")) +
+  theme(axis.title.x = element_blank())
+
+ggplot2::ggsave(here::here("plots", "robust_int_exp_med.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
 
 ```
 
@@ -1664,6 +1701,7 @@ df <- allbus2006 %>%
   mutate(
     below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
     quantile_group = cut(
+      include.lowest = TRUE,
       age, 
       breaks = quantile(age, probs = c(0, 0.25, 0.5, 0.75, 1)), 
       labels = c("Q1", "Q2", "Q3", "Q4")
@@ -1779,7 +1817,7 @@ kurtosis(allbus2006$immigration) |>
 
 allbus2006 |> 
   ggplot(aes(x = immigration)) +
-  geom_histogram(bins = 13) +
+  geom_histogram(bins = 13, colour = "gray40", fill = "gray70") +
   labs(
     title = "Histogramm der Einstellungen gegenüber Immigration",
     subtitle = "N = 2635",
@@ -1815,7 +1853,7 @@ kurtosis(allbus2006_robust$immigration) |>
 
 allbus2006_robust |> 
   ggplot(aes(x = immigration)) +
-  geom_histogram(bins = 13) +
+  geom_histogram(bins = 13, colour = "gray40", fill = "gray70") +
   labs(
     title = "Histogramm der Einstellungen gegenüber Immigration 
     für CAPI-Befragte und erfolgreiche CASI-Befragte",
