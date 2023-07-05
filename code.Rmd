@@ -1134,7 +1134,7 @@ ggplot(data = allbus2006, mapping = aes(x = split, y = immigration)) +
   ) +
   theme(axis.title.y = element_blank()) +
   coord_flip() +
-  geom_boxplot(width = 0.15)
+  geom_boxplot(width = 0.15) 
 
 ggplot2::ggsave(here::here("plots", "violin.pdf"), dpi = dpi)
 
@@ -1142,9 +1142,10 @@ ggplot2::ggsave(here::here("plots", "violin.pdf"), dpi = dpi)
 
 ```{r density plot}
 
-ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
+ggplot(data = allbus2006, mapping = aes(x = immigration, colour = split)) +
   geom_density(size = 1) +
-  scale_color_manual(values = c(colours_colourblind[[7]], colours_colourblind[[6]])) +
+  scale_color_manual(values = c(colours_colourblind[[7]],
+                                colours_colourblind[[6]])) +
   scale_x_continuous(breaks = c(1:7),
                      labels = c("negativ", 2:6, "positiv")) +
   scale_y_continuous(limits = c(0, 0.3)) +
@@ -1155,9 +1156,10 @@ ggplot(data = allbus2006, mapping = aes(x = immigration, color = split)) +
     color = "Befragungsmodus",
     y = "Dichte",
     caption = "Daten: ALLBUS 2006"
-  ) 
+  ) +
+  theme(legend.position = "bottom") 
 
-ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi)
+ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi, units = "in", width = 7, height = 5)
 
 ```
 
