@@ -1475,6 +1475,8 @@ df %>%
 
 ## Robustheitsanalyse
 
+### Regression
+
 
 ```{r nohilfe subset}
 allbus2006_robust <- allbus2006 |> 
@@ -1536,23 +1538,21 @@ ggplot2::ggsave(here::here("plots", "coefplot_robust.pdf"), dpi = dpi, height = 
 ##### Geschlecht
 
 ```{r}
-df <- allbus2006_robust
-
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = as.numeric(int_sex))) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = int_sex, group = int_sex, linetype = int_sex)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     color = colours_colourblind["blindblue"],
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   scale_color_manual(values = c(colours_colourblind[[4]], colours_colourblind[[2]])) +
@@ -1565,7 +1565,7 @@ ggplot2::ggsave(here::here("plots", "robust_int_sex.pdf"), dpi = dpi, width = 7,
 ##### Interviewer*in Altersdifferenz
 
 ```{r}
-df <- allbus2006 %>%
+allbus2006_robust <- allbus2006_robust %>%
   mutate(
     below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
     quantile_group = cut(
@@ -1576,26 +1576,26 @@ df <- allbus2006 %>%
     )
   )
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = int_agediff)) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   theme_classic()
@@ -1605,20 +1605,20 @@ df %>%
 ##### Bildung
 
 ```{r}
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = as.numeric(int_edu))) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = int_edu, group = int_edu)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   theme_classic()
@@ -1628,7 +1628,7 @@ df %>%
 ##### Erfahrung
 
 ```{r}
-df <- allbus2006 %>%
+allbus2006_robust <- allbus2006_robust %>%
   mutate(
     below_median = ifelse(int_exp < median(int_exp), "Unter Median int_exp", "Über Median int_exp"),
     Quartile = cut(
@@ -1639,21 +1639,21 @@ df <- allbus2006 %>%
     )
   )
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = int_exp)) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = Quartile, group = Quartile, linetype = Quartile)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     color = colours_colourblind["blindblue"],
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   scale_color_manual(values = c(colours_colourblind[[2]], colours_colourblind[[3]], colours_colourblind[[4]], colours_colourblind[[7]])) +
   scale_linetype_manual(values = c("dashed", "dotdash", "twodash", "dotted")) +
@@ -1669,7 +1669,7 @@ df %>%
 ggplot2::ggsave(here::here("plots", "robust_int_exp_quartile.pdf"), dpi = dpi, width = 7, height = 3.5, units = "in")
 
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, 
              col = below_median, group = below_median, linetype = below_median)) +
   # geom_jitter() +
@@ -1677,7 +1677,7 @@ df %>%
   geom_smooth(
     color = colours_colourblind["blindblue"],
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(
     title = "Der Effekt des Befragungsmodus auf geäußerte Einstellungen 
@@ -1700,7 +1700,7 @@ quantile(allbus2006$int_exp)
 ##### Alter
 
 ```{r}
-df <- allbus2006 %>%
+allbus2006_robust <- allbus2006_robust %>%
   mutate(
     below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
     quantile_group = cut(
@@ -1711,26 +1711,26 @@ df <- allbus2006 %>%
     )
   )
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = age)) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = quantile_group, group = quantile_group)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = below_median, group = below_median)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   theme_classic()
@@ -1740,20 +1740,20 @@ df %>%
 ##### Geschlecht
 
 ```{r}
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = as.numeric(sex))) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = sex, group = sex)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   theme_classic()
@@ -1763,25 +1763,40 @@ df %>%
 ##### Bildung
 
 ```{r}
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = as.numeric(edu))) +
   geom_jitter() +
   scale_color_viridis_c() +
   geom_smooth(method = "glm", se = FALSE) +
   theme_classic()
 
-df %>% 
+allbus2006_robust %>% 
   ggplot(aes(x = split, y = immigration, col = edu, group = edu)) +
   # geom_jitter() +
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
   labs(subtitle = "Main effect in blue") +
   theme_classic()
 
 ```
+
+### Gruppenunterschiede
+
+```{r}
+allbus2006_robust  |> 
+  select(age, split) |> 
+  tbl_summary(by = split)  |> 
+  add_p()
+
+allbus2006_robust  |> 
+  select(edu, split) |> 
+  tbl_summary(by = split)  |> 
+  add_p() 
+```
+
 
 
 ## Regressionsdiagnostik
