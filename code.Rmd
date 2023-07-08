@@ -21,7 +21,7 @@ if (!require("pacman")) install.packages("pacman"); library(pacman)
 pacman::p_load(devtools)
 #if (!require("stdidx")) devtools::install_github("graemeblair/stdidx"); library(stdidx)
 #if (!require("summarytools")) install.packages("summarytools"); library(summarytools)
-pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary, olsrr, moments)
+pacman::p_load(haven, readr, tidyverse, gtsummary, ggsci, ROSE, labelled, matrixStats, car, psych, lsr, modelsummary, olsrr, moments, estimatr)
 
 here::i_am("code.Rmd")
 
@@ -431,6 +431,10 @@ allbus2006$sdperception <- rowMeans(allbus2006[,c("lebensstil",
 
 # Index standardisieren 
 
+allbus2006 |> 
+  select(sdperception) |> 
+  summary()
+
 allbus2006 <- allbus2006 |> 
   mutate(sdperception = (sdperception - min(sdperception, na.rm = TRUE)) / 
            (max(sdperception, na.rm = TRUE) - min(sdperception, na.rm = TRUE)))
@@ -445,14 +449,6 @@ allbus2006 |>
   select(bewertung_nielebensstil, bewertung_lebensstil, bewertung_niearbeit, 
          bewertung_arbeit, bewertung_niepolitik, bewertung_politik, 
          bewertung_nieehe, bewertung_ehe)
-
-# missings nach Paar
-
-allbus2006 |> 
-  select(bewertung_nielebensstil, bewertung_lebensstil, bewertung_niearbeit, 
-         bewertung_arbeit, bewertung_niepolitik, bewertung_politik, 
-         bewertung_nieehe, bewertung_ehe, sdperception) |> 
-  filter(!is.na(sdperception))
 ```
 
 
@@ -1151,7 +1147,7 @@ ggplot2::ggsave(here::here("plots", "violin.pdf"), dpi = dpi)
 ```{r density plot}
 
 ggplot(data = allbus2006, mapping = aes(x = immigration, colour = split)) +
-  geom_density(size = 1) +
+  geom_density(linewidth = 1) +
   scale_color_manual(values = c(colours_colourblind[[7]],
                                 colours_colourblind[[6]])) +
   scale_x_continuous(breaks = c(1:7),
@@ -1171,12 +1167,45 @@ ggplot2::ggsave(here::here("plots", "density.pdf"), dpi = dpi, units = "in", wid
 
 ```
 
+```{r scatter mit ki}
+summary_allbus <-
+  allbus2006 %>%
+  group_by(split) %>%
+  do(tidy(lm_robust(immigration ~ 1, data = .))) %>%
+  mutate(Y = estimate)
+
+
+ggplot(data = summary_allbus, aes(x = split, y = Y)) +
+  geom_point(
+    data = allbus2006,
+    aes(split, immigration),
+    position = position_jitter(width = 0.2, height = 0.1),
+    alpha = 0.15
+  ) +
+  geom_point(size = 1) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0, linewidth = 1) +
+  theme_bw() +
+  scale_y_continuous(
+    breaks = c(1:7),
+    minor_breaks = seq(0.5, 6.5, 0.5),
+    labels = c("negativ", 2:6, "positiv")) +
+  theme(axis.title.x = element_blank()) +
+  labs(
+    title = "Einstellung gegenüber Immigration nach Befragungsmodus",
+    subtitle = "N = 2635",
+    y = "Einstellung gegenüber Immigration",
+    caption = "Daten: ALLBUS 2006"
+  )
+
+ggplot2::ggsave(here::here("plots", "scatter_ci.pdf"), dpi = dpi)
+
+```
 
 
 ```{r scatter}
 ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration)) +
-  geom_point(alpha = 0.4, position = position_jitter(height = 0.05)) +
-  geom_smooth(method = 'lm', size = 2, color = colours_colourblind[[6]]) +
+  geom_point(alpha = 0.1, position = position_jitter(height = 0.05)) +
+  #geom_smooth(method = 'lm', size = 2, color = colours_colourblind[[6]]) +
   scale_y_continuous(
     breaks = c(1:7),
     minor_breaks = seq(0.5, 6.5, 0.5),
@@ -1190,7 +1219,9 @@ ggplot(data = allbus2006, mapping = aes(x = as.numeric(split), y = immigration))
     y = "Einstellungen gegenüber Immigration",
     caption = "Daten: ALLBUS 2006"
   ) +
-  theme(axis.title.x = element_blank())
+  theme(axis.title.x = element_blank()) +
+  stat_summary(fun = mean, geom = "point",
+                 width = 5) 
 
 ggplot2::ggsave(here::here("plots", "scatter.pdf"), dpi = dpi)
 ```
