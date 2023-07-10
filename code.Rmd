@@ -1261,9 +1261,7 @@ m4.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu * split 
 summary(m4.lm)
 ```
 
-`r modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm),  stars = T, output = "markdown", statistic = 'p.value')`
-
-```{r modelsummary}
+```{r coef names}
 coef_names <- rev(c("SD-Wahrnehmung",
                     "SD-Neigung",
                     "CAPI:Interviewer*in-Abitur",
@@ -1282,6 +1280,13 @@ coef_names <- rev(c("SD-Wahrnehmung",
                     "Alter",
                     "CAPI",
                     "Konstante"))
+```
+
+
+`r modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm), coef_rename = coef_names, stars = T, output = "markdown", statistic = 'p.value')`
+
+```{r modelsummary}
+
 
 modelsummary::modelsummary(list(m1.lm, m2.lm, m3.lm, m4.lm), 
                            coef_rename = coef_names, 
@@ -1359,7 +1364,7 @@ df %>%
 ```{r}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(int_agediff < median(int_agediff), "Below Median int_agediff", "Above Median int_agediff"),
+    below_median = ifelse(int_agediff < median(int_agediff), "Unter Median", "Über Median"),
     quantile_group = cut(
       include.lowest = TRUE,
       int_agediff, 
@@ -1389,8 +1394,13 @@ df %>%
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der Altersdifferenz auf Einstellungen gegenüber Immigration",
+       colour = "Median Altersdifferenz",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  theme(axis.title.x = element_blank()) +
+  ggthemes::scale_colour_colorblind()
 
 ```
 
@@ -1422,7 +1432,7 @@ df %>%
 ```{r}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(int_exp < median(int_exp), "Below Median int_exp", "Above Median int_exp"),
+    below_median = ifelse(int_exp < median(int_exp), "Unter Median", "Über Median"),
     quantile_group = cut(
       include.lowest = TRUE,
       int_exp, 
@@ -1452,8 +1462,12 @@ df %>%
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der Erfahrung Interviewer*in auf Einstellungen gegenüber Immigration",
+       colour = "Median Erfahrung Interviewer*in",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 
 ```
 
@@ -1464,7 +1478,7 @@ df %>%
 ```{r}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(age < median(age), "Unter Median", "Über Median"),
     quantile_group = cut(
       age, 
       breaks = quantile(age, probs = c(0, 0.25, 0.5, 0.75, 1)), 
@@ -1493,8 +1507,12 @@ df %>%
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt des Alters auf Einstellungen gegenüber Immigration",
+       colour = "Median Alter",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 
 ```
 
@@ -1550,7 +1568,7 @@ df %>%
 ```{r}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(sdperception < median(sdperception), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(sdperception < median(sdperception), "Unter Median", "Über Median"),
     quantile_group = cut(
       sdperception, 
       breaks = quantile(sdperception, probs = c(0, 0.25, 0.5, 0.75, 1)), 
@@ -1579,16 +1597,20 @@ df %>%
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der SD-Wahrnehmung auf Einstellungen gegenüber Immigration",
+       colour = "Median SD-Wahrnehmung",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 ```
 
 ### SD-Neigung
 
-```{r}
+```{r sdt invers}
 df <- allbus2006 %>%
   mutate(
-    below_median = ifelse(sdtendency < median(sdtendency), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(sdtendency < median(sdtendency), "Unter Median", "Über Median"),
     quantile_group = cut(
       sdperception, 
       breaks = quantile(sdtendency, probs = c(0, 0.25, 0.5, 0.75, 1)), 
@@ -1617,8 +1639,12 @@ df %>%
     method = "glm", se = FALSE,
     data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der SD-Neigung auf Einstellungen gegenüber Immigration",
+       colour = "Median SD-Neigung",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 ```
 
 
@@ -1656,8 +1682,7 @@ m4_nohilfe.lm <- lm(immigration ~ split + age_cen + age_cen * split + edu + edu 
 
 summary(m4_nohilfe.lm)
 ```
-
-` r modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), stars = T, statistic = "p.value", output = "markdown)`
+` r modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), coef_rename = coef_names, stars = T, output = "markdown", statistic = 'p.value') `
 
 ```{r modelsummary_nohilfe}
 modelsummary::modelsummary(list(m1_nohilfe.lm, m2_nohilfe.lm, m3_nohilfe.lm, m4_nohilfe.lm), 
@@ -1861,7 +1886,7 @@ quantile(allbus2006$int_exp)
 ```{r}
 allbus2006_robust <- allbus2006_robust %>%
   mutate(
-    below_median = ifelse(age < median(age), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(age < median(age), "Unter Median", "Über Median"),
     quantile_group = cut(
       include.lowest = TRUE,
       age, 
@@ -1947,7 +1972,7 @@ allbus2006_robust %>%
 ```{r}
 allbus2006_robust <- allbus2006_robust %>%
   mutate(
-    below_median = ifelse(sdperception < median(sdperception), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(sdperception < median(sdperception), "Unter Median", "Über Median"),
     quantile_group = cut(
       sdperception, 
       breaks = quantile(sdperception, probs = c(0, 0.25, 0.5, 0.75, 1)), 
@@ -1976,8 +2001,12 @@ allbus2006_robust %>%
     method = "glm", se = FALSE,
     data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der SD-Wahrnehmung auf Einstellungen gegenüber Immigration",
+       colour = "Median SD-Wahrnehmung",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 ```
 
 ##### SD-Neigung
@@ -1985,7 +2014,7 @@ allbus2006_robust %>%
 ```{r}
 allbus2006_robust <- allbus2006_robust %>%
   mutate(
-    below_median = ifelse(sdtendency < median(sdtendency), "Below Median Age", "Above Median Age"),
+    below_median = ifelse(sdtendency < median(sdtendency), "Unter Median", "Über Median"),
     quantile_group = cut(
       sdperception, 
       breaks = quantile(sdtendency, probs = c(0, 0.25, 0.5, 0.75, 1)), 
@@ -2012,10 +2041,14 @@ allbus2006_robust %>%
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(
     method = "glm", se = FALSE,
-    data = allbus2006_robust, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
+    data = df, aes(x = split, y = immigration, group = NA), inherit.aes = FALSE
   ) +
-  labs(subtitle = "Main effect in blue") +
-  theme_classic()
+  labs(subtitle = "Haupteffekt in blau",
+       title = "Effekt der SD-Neigung auf Einstellungen gegenüber Immigration",
+       colour = "Median SD-Neigung",
+       y = "Einstellung gegenüber Immigration",
+       caption = "Daten: ALLBUS 2006") +
+  ggthemes::scale_color_colorblind()
 ```
 
 ### Gruppenunterschiede
@@ -2073,10 +2106,10 @@ allbus2006 |>
   geom_histogram(bins = 13, colour = "gray40", fill = "gray70") +
   labs(
     title = "Histogramm der Einstellungen gegenüber Immigration",
-    subtitle = "N = 2635",
     x = "Einstellungen gegenüber Immigration",
     y = "Anzahl",
-    caption = "Daten: ALLBUS 2006"
+    caption = "Daten: ALLBUS 2006
+    N = 2635"
   ) +
   scale_y_continuous(limits = c(0, 400)) +
   scale_x_continuous(
@@ -2110,10 +2143,10 @@ allbus2006_robust |>
   labs(
     title = "Histogramm der Einstellungen gegenüber Immigration 
     für CAPI-Befragte und erfolgreiche CASI-Befragte",
-    subtitle = "N = 2104",
     x = "Einstellungen gegenüber Immigration",
     y = "Anzahl",
-    caption = "Daten: ALLBUS 2006"
+    caption = "Daten: ALLBUS 2006
+    N = 2104"
   ) +
   scale_y_continuous(limits = c(0, 350)) +
   scale_x_continuous(
