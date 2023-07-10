@@ -33,6 +33,12 @@ colours_colourblind <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", 
 names(colours_colourblind) <- c("blindblack", "blindorange", "blindlightblue", "blindgreen", "blindyellow", "blindblue", "blinddarkorange", "blindpurple")
 
 dpi <- c(700) # for ggsave
+
+dir.create("data")
+dir.create("images")
+dir.create("plots")
+dir.create("stats")
+dir.create("tables")
 ```
 
 # Datenbereinigung
